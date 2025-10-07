@@ -62,3 +62,5 @@ vibezbackend/**/*.class
 hs_err_pid*
 
 .idea
+
+vibezbackend\src\main\resources\application.properties
