@@ -1,4 +1,4 @@
-package gieraga.vibezbackend.model;
+package com.vibez.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;

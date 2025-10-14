@@ -1,19 +1,14 @@
-package gieraga.vibezbackend.controller;
+package com.vibez.controller;
 
-import gieraga.vibezbackend.dto.SaveReelRequest;
-import gieraga.vibezbackend.model.Reel;
-import gieraga.vibezbackend.repo.ReelRepo;
-import gieraga.vibezbackend.service.StorageService;
+import com.vibez.dto.SaveReelRequest;
+import com.vibez.model.Reel;
+import com.vibez.repository.ReelRepository;
+import com.vibez.service.StorageService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
-import java.net.URL;
 import java.util.List;
 
 @RestController
@@ -21,13 +16,13 @@ import java.util.List;
 @CrossOrigin(origins = "http://localhost:5173")
 public class ReelController {
 
-    private final ReelRepo reelRepository;
+    private final ReelRepository reelRepository;
     private final StorageService storageService;
 
     @Value("${r2.public.url}")
     private String r2PublicUrl;
 
-    public ReelController(ReelRepo reelRepository, StorageService storageService) {
+    public ReelController(ReelRepository reelRepository, StorageService storageService) {
         this.reelRepository = reelRepository;
         this.storageService = storageService;
     }

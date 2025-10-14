@@ -1,4 +1,4 @@
-package gieraga.vibezbackend.service;
+package com.vibez.service;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;

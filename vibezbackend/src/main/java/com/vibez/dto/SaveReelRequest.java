@@ -1,4 +1,4 @@
-package gieraga.vibezbackend.dto;
+package com.vibez.dto;
 
 public class SaveReelRequest {
     private String VideoFileName;

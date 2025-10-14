@@ -1,4 +1,4 @@
-package gieraga.vibezbackend.config;
+package com.vibez.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
