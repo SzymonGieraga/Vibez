@@ -15,17 +15,16 @@ public class Reel {
     private Long id;
 
     private String videoUrl;
+    private String thumbnailUrl;
     private String description;
     private String username;
+    private String author;
+    private String songTitle;
+    private String genre;
+    private String tags;
 
 
     public Reel() {
-    }
-
-    public Reel(String videoUrl, String description, String username) {
-        this.videoUrl = videoUrl;
-        this.description = description;
-        this.username = username;
     }
 
     public Long getId() {
@@ -44,6 +43,14 @@ public class Reel {
         this.videoUrl = videoUrl;
     }
 
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
     public String getDescription() {
         return description;
     }
@@ -58,5 +65,37 @@ public class Reel {
 
     public void setUsername(String username) {
         this.username = username;
+    }
+
+    public String getAuthor() {
+        return author;
+    }
+
+    public void setAuthor(String author) {
+        this.author = author;
+    }
+
+    public String getSongTitle() {
+        return songTitle;
+    }
+
+    public void setSongTitle(String songTitle) {
+        this.songTitle = songTitle;
+    }
+
+    public String getGenre() {
+        return genre;
+    }
+
+    public void setGenre(String genre) {
+        this.genre = genre;
+    }
+
+    public String getTags() {
+        return tags;
+    }
+
+    public void setTags(String tags) {
+        this.tags = tags;
     }
 }

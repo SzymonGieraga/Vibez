@@ -8,10 +8,13 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
 import java.net.URL;
 import java.util.List;
-
-//TODO: Nazwa użytkownika do rolki (narazie PLACEHOLDER)
 
 @RestController
 @RequestMapping("/api/reels")
@@ -38,11 +41,17 @@ public class ReelController {
     public Reel saveReel(@RequestBody SaveReelRequest request) {
         Reel newReel = new Reel();
 
-        String publicVideoUrl = r2PublicUrl + "/" + request.getFileName();
+        newReel.setVideoUrl(r2PublicUrl + "/" + request.getVideoFileName());
+        if (request.getThumbnailFileName() != null && !request.getThumbnailFileName().isEmpty()) {
+            newReel.setThumbnailUrl(r2PublicUrl + "/" + request.getThumbnailFileName());
+        }
 
-        newReel.setVideoUrl(publicVideoUrl);
         newReel.setDescription(request.getDescription());
-        newReel.setUsername("tempUser");
+        newReel.setUsername(request.getUsername());
+        newReel.setAuthor(request.getAuthor());
+        newReel.setSongTitle(request.getSongTitle());
+        newReel.setGenre(request.getGenre());
+        newReel.setTags(request.getTags());
 
         return reelRepository.save(newReel);
     }
@@ -53,5 +62,4 @@ public class ReelController {
         return ResponseEntity.ok(uploadUrl);
     }
 }
-
 

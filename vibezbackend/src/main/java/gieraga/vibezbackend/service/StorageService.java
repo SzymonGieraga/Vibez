@@ -1,5 +1,6 @@
 package gieraga.vibezbackend.service;
 
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,10 +12,11 @@ import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequ
 import java.time.Duration;
 
 @Service
+@RequiredArgsConstructor
 public class StorageService {
 
-    @Autowired
-    private S3Presigner s3Presigner;
+
+    private final S3Presigner s3Presigner;
 
     @Value("${aws.s3.bucket-name}")
     private String bucketName;

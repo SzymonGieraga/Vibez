@@ -63,4 +63,6 @@ hs_err_pid*
 
 .idea
 
-vibezbackend\src\main\resources\application.properties
+vibezbackend/src/main/resources/application.properties
+
+/xdp.txt
