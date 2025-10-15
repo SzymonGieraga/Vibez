@@ -38,7 +38,25 @@ function App() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            if (currentUser) {
+                try {
+                    const token = await currentUser.getIdToken();
+                    await fetch('http://localhost:8080/api/users/sync', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        },
+                        body: JSON.stringify({
+                            email: currentUser.email,
+                            firebaseUid: currentUser.uid
+                        })
+                    });
+                } catch (error) {
+                    console.error("User sync failed:", error);
+                }
+            }
             setUser(currentUser);
             setLoading(false);
         });

@@ -56,5 +56,10 @@ public class ReelController {
         String uploadUrl = storageService.generatePresignedUrl(fileName, contentType);
         return ResponseEntity.ok(uploadUrl);
     }
+    @GetMapping("/user/{username:.+}")
+    public ResponseEntity<List<Reel>> getReelsByUsername(@PathVariable String username) {
+        List<Reel> reels = reelRepository.findByUsername(username);
+        return ResponseEntity.ok(reels);
+    }
 }
 

@@ -12,10 +12,21 @@ public class User {
     @Id
     private String username;
 
+    private String email;
+
     @Column(length = 1024)
     private String bio;
 
     private String profilePictureUrl;
+
+    public User(String username, String email) {
+        this.username = username;
+        this.email = email;
+    }
+
+    public User() {
+
+    }
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }

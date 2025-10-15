@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { signOut } from 'firebase/auth';
-import {Link} from 'react-router-dom'
+import { Link } from 'react-router-dom';
 
+// --- Ikony ---
 const HomeIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> );
 const ProfileIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> );
 const PopularIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> );
@@ -54,10 +55,10 @@ export default function MainPage({ user, auth }) {
                 <div>
                     <h1 className="text-2xl font-bold mb-10">Vibez</h1>
                     <ul className="space-y-4">
-                        <NavItem icon={<HomeIcon />} label="Main Page" />
+                        <NavItem icon={<HomeIcon />} label="Main Page" to="/" />
                         <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${username}`} />
-                        <NavItem icon={<PopularIcon />} label="Popular" />
-                        <NavItem icon={<SettingsIcon />} label="Settings" />
+                        <NavItem icon={<PopularIcon />} label="Popular" to="#" />
+                        <NavItem icon={<SettingsIcon />} label="Settings" to="#" />
                     </ul>
                 </div>
                 <div>
@@ -94,7 +95,14 @@ export default function MainPage({ user, auth }) {
     );
 }
 
-const NavItem = ({ icon, label }) => ( <li className="flex items-center space-x-3 text-gray-400 hover:text-white cursor-pointer">{icon}<span className="font-semibold">{label}</span></li> );
+const NavItem = ({ icon, label, to = "#" }) => (
+    <li>
+        <Link to={to} className="flex items-center space-x-3 text-gray-400 hover:text-white">
+            {icon}
+            <span className="font-semibold">{label}</span>
+        </Link>
+    </li>
+);
 const Tag = ({ name }) => ( <span className="bg-gray-800 text-gray-300 text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer hover:bg-gray-700">{name}</span> );
 
 function AddReelModal({ user, onClose, onReelAdded }) {
@@ -124,25 +132,22 @@ function AddReelModal({ user, onClose, onReelAdded }) {
             const presignedVideoUrl = await videoUrlResponse.text();
 
             let thumbnailFileName = null;
-            let presignedThumbnailUrl = null;
             if (thumbnailFile) {
                 thumbnailFileName = `${Date.now()}_${thumbnailFile.name}`;
                 const thumbUrlResponse = await fetch(`http://localhost:8080/api/reels/generate-upload-url?fileName=${encodeURIComponent(thumbnailFileName)}&contentType=${encodeURIComponent(thumbnailFile.type)}`);
                 if (!thumbUrlResponse.ok) throw new Error('Could not get thumbnail upload URL.');
-                presignedThumbnailUrl = await thumbUrlResponse.text();
+                const presignedThumbnailUrl = await thumbUrlResponse.text();
+
+                await fetch(presignedThumbnailUrl, { method: 'PUT', body: thumbnailFile, headers: { 'Content-Type': thumbnailFile.type } });
             }
 
-            const uploadPromises = [ fetch(presignedVideoUrl, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } }) ];
-            if (presignedThumbnailUrl) {
-                uploadPromises.push( fetch(presignedThumbnailUrl, { method: 'PUT', body: thumbnailFile, headers: { 'Content-Type': thumbnailFile.type } }) );
-            }
-            const uploadResults = await Promise.all(uploadPromises);
-            if (uploadResults.some(res => !res.ok)) throw new Error('File upload to R2 failed.');
+            const uploadResponse = await fetch(presignedVideoUrl, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
+            if (!uploadResponse.ok) throw new Error('File upload to R2 failed.');
 
             const saveResponse = await fetch('http://localhost:8080/api/reels', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, videoFileName: videoFileName, thumbnailFileName: thumbnailFileName, username: user.email, })
+                body: JSON.stringify({ ...formData, videoFileName: videoFileName, thumbnailFileName: thumbnailFileName, username: user.email.split('@')[0] })
             });
             if (!saveResponse.ok) throw new Error('Failed to save reel metadata.');
 
@@ -244,27 +249,16 @@ const VideoPlayer = ({ videos, volume, setVolume }) => {
         video.currentTime = (clickX / rect.width) * video.duration;
     };
 
-    const handleTouchStart = (e) => {
-        setTouchStart(e.touches[0].clientY);
-    };
-
+    const handleTouchStart = (e) => setTouchStart(e.touches[0].clientY);
     const handleTouchEnd = (e) => {
         const touchEnd = e.changedTouches[0].clientY;
         const deltaY = touchStart - touchEnd;
-        if (deltaY > 50) { // Swipe up
-            setIsDetailsVisible(true);
-        } else if (deltaY < -50) { // Swipe down
-            setIsDetailsVisible(false);
-        }
+        if (deltaY > 50) setIsDetailsVisible(true);
+        else if (deltaY < -50) setIsDetailsVisible(false);
     };
 
     return (
-        <div
-            className="w-full h-full bg-black flex flex-col relative group"
-            onClick={togglePlay}
-            onTouchStart={handleTouchStart}
-            onTouchEnd={handleTouchEnd}
-        >
+        <div className="w-full h-full bg-black flex flex-col relative group" onClick={togglePlay} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
             <video ref={videoRef} key={currentVideo.id} className="w-full h-full object-cover" src={currentVideo.videoUrl} poster={currentVideo.thumbnailUrl} />
 
             <button onClick={(e) => { e.stopPropagation(); goToPrevVideo(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
@@ -295,49 +289,32 @@ const VideoPlayer = ({ videos, volume, setVolume }) => {
                 </div>
             </div>
 
-            <ExpandedDetailsPanel
-                video={currentVideo}
-                isVisible={isDetailsVisible}
-                onClose={() => setIsDetailsVisible(false)}
-            />
+            <ExpandedDetailsPanel video={currentVideo} isVisible={isDetailsVisible} onClose={() => setIsDetailsVisible(false)} />
         </div>
     );
 };
 
-const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => {
-    return (
-        <div
-            className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`}
-            onClick={(e) => e.stopPropagation()}
-        >
-            <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4" onClick={onClose}></div>
-            <div className="text-left text-sm space-y-2">
-                <DetailRow label="Song" value={`${video.songTitle} by ${video.author}`} />
-                <DetailRow label="Genre" value={video.genre} />
-                <DetailRow label="Posted by" value={`@${video.username}`} />
+const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => (
+    <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
+        <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>
+        <div className="text-left text-sm space-y-2">
+            <DetailRow label="Song" value={`${video.songTitle} by ${video.author}`} />
+            <DetailRow label="Genre" value={video.genre} />
+            <DetailRow label="Posted by" value={`@${video.username}`} />
+            <div><p className="font-bold text-gray-400">Description</p><p className="text-white whitespace-pre-wrap">{video.description}</p></div>
+            {video.tags && (
                 <div>
-                    <p className="font-bold text-gray-400">Description</p>
-                    <p className="text-white whitespace-pre-wrap">{video.description}</p>
-                </div>
-                {video.tags && (
-                    <div>
-                        <p className="font-bold text-gray-400">Tags</p>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                            {video.tags.split(',').map(tag => tag.trim()).map((tag, index) => (
-                                <span key={index} className="bg-gray-700 text-gray-200 text-xs px-2 py-0.5 rounded-full">#{tag}</span>
-                            ))}
-                        </div>
+                    <p className="font-bold text-gray-400">Tags</p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                        {video.tags.split(',').map(tag => tag.trim()).map((tag, index) => (
+                            <span key={index} className="bg-gray-700 text-gray-200 text-xs px-2 py-0.5 rounded-full">#{tag}</span>
+                        ))}
                     </div>
-                )}
-            </div>
+                </div>
+            )}
         </div>
-    );
-};
-
-const DetailRow = ({ label, value }) => (
-    <div>
-        <p className="font-bold text-gray-400">{label}</p>
-        <p className="text-white">{value}</p>
     </div>
 );
+
+const DetailRow = ({ label, value }) => ( <div><p className="font-bold text-gray-400">{label}</p><p className="text-white">{value}</p></div> );
 

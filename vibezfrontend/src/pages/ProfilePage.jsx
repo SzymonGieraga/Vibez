@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
@@ -18,16 +18,21 @@ export default function ProfilePage({ auth, currentUser }) {
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    const isOwnProfile = currentUser.email === username;
+    const loggedInUsername = currentUser.email.split('@')[0];
+    const isOwnProfile = loggedInUsername === username;
 
     useEffect(() => {
         const fetchProfileData = async () => {
             setIsLoading(true);
             try {
-                const profileRes = await fetch(`http://localhost:8080/api/users/${username}`);
-                const reelsRes = await fetch(`http://localhost:8080/api/reels/user/${username}`);
+                // Równoległe pobieranie danych
+                const [profileRes, reelsRes] = await Promise.all([
+                    fetch(`http://localhost:8080/api/users/${username}`),
+                    fetch(`http://localhost:8080/api/reels/user/${username}`)
+                ]);
 
-                if (!profileRes.ok || !reelsRes.ok) throw new Error('Failed to fetch data');
+                if (!profileRes.ok) throw new Error(`Profile not found for ${username}`);
+                if (!reelsRes.ok) throw new Error(`Reels not found for ${username}`);
 
                 const profileData = await profileRes.json();
                 const reelsData = await reelsRes.json();
@@ -36,6 +41,7 @@ export default function ProfilePage({ auth, currentUser }) {
                 setReels(reelsData);
             } catch (error) {
                 console.error("Error fetching profile data:", error);
+                setProfile(null);
             } finally {
                 setIsLoading(false);
             }
@@ -54,10 +60,8 @@ export default function ProfilePage({ auth, currentUser }) {
 
     return (
         <div className="w-screen h-screen bg-black text-white relative overflow-hidden">
-            {/* Główna treść */}
             <main className="w-full h-full overflow-y-auto">
                 <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
-                    {/* Nagłówek profilu */}
                     <header className="flex flex-col sm:flex-row items-center gap-6 mb-8">
                         <img
                             src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${username}&background=222&color=fff&size=128`}
@@ -78,8 +82,11 @@ export default function ProfilePage({ auth, currentUser }) {
                     <div className="border-t border-gray-800 pt-6">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                             {reels.map(reel => (
-                                <div key={reel.id} className="aspect-w-9 aspect-h-16 bg-gray-900">
+                                <div key={reel.id} className="aspect-w-9 aspect-h-16 bg-gray-900 group relative">
                                     <img src={reel.thumbnailUrl || 'https://placehold.co/360x640/1a1a1a/ffffff?text=No+Thumbnail'} alt={reel.description} className="w-full h-full object-cover" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                                        <p className="text-white text-sm font-bold text-center">{reel.songTitle}</p>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -97,7 +104,7 @@ export default function ProfilePage({ auth, currentUser }) {
                     <h1 className="text-2xl font-bold mb-10">Vibez</h1>
                     <ul className="space-y-4">
                         <NavItem icon={<HomeIcon />} label="Main Page" to="/" />
-                        <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${currentUser.email}`} />
+                        <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${loggedInUsername}`} />
                         <NavItem icon={<PopularIcon />} label="Popular" to="#" />
                         <NavItem icon={<SettingsIcon />} label="Settings" to="#" />
                     </ul>
@@ -148,7 +155,9 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
                 const uploadRes = await fetch(presignedUrl, { method: 'PUT', body: profilePicFile, headers: { 'Content-Type': profilePicFile.type } });
                 if (!uploadRes.ok) throw new Error('Profile picture upload failed.');
 
-                const r2PublicUrl = 'https://pub-2bf3c78cb53844c490389c1c3331b74d.r2.dev';
+                const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
+                if(!r2PublicUrl) throw new Error("VITE_R2_PUBLIC_URL is not defined in .env.local");
+
                 profilePictureUrl = `${r2PublicUrl}/${fileName}`;
             }
 
@@ -196,3 +205,4 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
         </div>
     );
 }
+
