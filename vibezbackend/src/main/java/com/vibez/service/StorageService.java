@@ -15,6 +15,8 @@ import java.time.Duration;
 @RequiredArgsConstructor
 public class StorageService {
 
+    @Value("${r2.public.url}")
+    private String r2publicurl;
 
     private final S3Presigner s3Presigner;
 
@@ -35,6 +37,9 @@ public class StorageService {
 
         PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
         return presignedRequest.url().toString();
+    }
+    public String buildPublicUrl(String fileName) {
+        return r2publicurl + "/" + fileName;
     }
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
 // Komponenty Ikon
@@ -12,6 +12,7 @@ const SettingsIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="curren
 
 export default function ProfilePage({ auth, currentUser }) {
     const { username } = useParams();
+    const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [reels, setReels] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -19,13 +20,12 @@ export default function ProfilePage({ auth, currentUser }) {
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
     const loggedInUsername = currentUser.email.split('@')[0];
-    const isOwnProfile = loggedInUsername === username;
+    const isOwnProfile = profile ? profile.username === loggedInUsername : false;
 
     useEffect(() => {
         const fetchProfileData = async () => {
             setIsLoading(true);
             try {
-                // Równoległe pobieranie danych
                 const [profileRes, reelsRes] = await Promise.all([
                     fetch(`http://localhost:8080/api/users/${username}`),
                     fetch(`http://localhost:8080/api/reels/user/${username}`)
@@ -50,6 +50,13 @@ export default function ProfilePage({ auth, currentUser }) {
         fetchProfileData();
     }, [username]);
 
+    const handleProfileUpdate = (updatedProfile) => {
+        setProfile(updatedProfile);
+        if (username !== updatedProfile.username) {
+            navigate(`/profile/${updatedProfile.username}`);
+        }
+    };
+
     if (isLoading) {
         return <div className="bg-black text-white flex items-center justify-center h-screen">Loading Profile...</div>;
     }
@@ -64,7 +71,7 @@ export default function ProfilePage({ auth, currentUser }) {
                 <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
                     <header className="flex flex-col sm:flex-row items-center gap-6 mb-8">
                         <img
-                            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${username}&background=222&color=fff&size=128`}
+                            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${profile.username}&background=222&color=fff&size=128`}
                             alt="Profile"
                             className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-2 border-gray-700"
                         />
@@ -117,7 +124,7 @@ export default function ProfilePage({ auth, currentUser }) {
             </nav>
             {isNavOpen && <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setIsNavOpen(false)} />}
 
-            {isEditModalOpen && <EditProfileModal user={profile} onClose={() => setIsEditModalOpen(false)} onProfileUpdate={setProfile} />}
+            {isEditModalOpen && <EditProfileModal user={profile} onClose={() => setIsEditModalOpen(false)} onProfileUpdate={handleProfileUpdate} />}
         </div>
     );
 }
@@ -132,6 +139,7 @@ const NavItem = ({ icon, label, to }) => (
 );
 
 function EditProfileModal({ user, onClose, onProfileUpdate }) {
+    const [username, setUsername] = useState(user.username || '');
     const [bio, setBio] = useState(user.bio || '');
     const [profilePicFile, setProfilePicFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
@@ -164,8 +172,10 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
             const updateRes = await fetch(`http://localhost:8080/api/users/${user.username}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bio, profilePictureUrl })
+                body: JSON.stringify({ username, bio, profilePictureUrl })
             });
+
+            if (updateRes.status === 409) throw new Error('Username already taken.');
             if (!updateRes.ok) throw new Error('Failed to update profile.');
 
             const updatedProfile = await updateRes.json();
@@ -185,6 +195,10 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
             <div className="bg-gray-900 border border-gray-700 p-8 rounded-lg shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-bold mb-6">Edit Profile</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400">Username</label>
+                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} required className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"/>
+                    </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">Profile Picture</label>
                         <input type="file" accept="image/*" onChange={(e) => setProfilePicFile(e.target.files[0])} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700"/>

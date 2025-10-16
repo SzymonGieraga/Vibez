@@ -35,6 +35,7 @@ export default function AppWrapper() {
 
 function App() {
     const [user, setUser] = useState(null);
+    const [appUser, setAppUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -42,7 +43,7 @@ function App() {
             if (currentUser) {
                 try {
                     const token = await currentUser.getIdToken();
-                    await fetch('http://localhost:8080/api/users/sync', {
+                    const response = await fetch('http://localhost:8080/api/users/sync', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -53,11 +54,18 @@ function App() {
                             firebaseUid: currentUser.uid
                         })
                     });
+                    if (!response.ok) throw new Error("Sync failed");
+                    const appUserData = await response.json();
+                    setAppUser(appUserData);
                 } catch (error) {
                     console.error("User sync failed:", error);
+                    setAppUser(null);
                 }
+                setUser(currentUser);
+            } else {
+                setUser(null);
+                setAppUser(null);
             }
-            setUser(currentUser);
             setLoading(false);
         });
         return () => unsubscribe();
@@ -70,8 +78,8 @@ function App() {
     return (
         <Routes>
             <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
-            <Route path="/profile/:username" element={user ? <ProfilePage auth={auth} currentUser={user} /> : <Navigate to="/auth" />} />
-            <Route path="/" element={user ? <MainPage auth={auth} user={user} /> : <Navigate to="/auth" />} />
+            <Route path="/profile/:username" element={user && appUser ? <ProfilePage auth={auth} currentUser={user} appUser={appUser} /> : <Navigate to="/auth" />} />
+            <Route path="/" element={user && appUser ? <MainPage auth={auth} user={user} appUser={appUser} /> : <Navigate to="/auth" />} />
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );

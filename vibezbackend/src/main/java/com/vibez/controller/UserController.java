@@ -1,25 +1,21 @@
 package com.vibez.controller;
 
 import com.vibez.dto.SyncUserRequest;
-import com.vibez.model.Reel;
+import com.vibez.dto.UpdateUserRequest;
 import com.vibez.model.User;
 import com.vibez.repository.UserRepository;
-import com.vibez.repository.ReelRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
 public class UserController {
 
     private final UserRepository userRepository;
-    private final ReelRepository reelRepository;
 
-    public UserController(UserRepository userRepository,ReelRepository reelRepository) {
+    public UserController(UserRepository userRepository) {
         this.userRepository = userRepository;
-        this.reelRepository = reelRepository;
     }
 
     @PostMapping("/sync")
@@ -44,12 +40,27 @@ public class UserController {
     }
 
     @PutMapping("/{username:.+}")
-    public ResponseEntity<User> updateUserProfile(@PathVariable String username, @RequestBody User userDetails) {
-        return userRepository.findByUsername(username).map(user -> {
-            user.setBio(userDetails.getBio());
-            user.setProfilePictureUrl(userDetails.getProfilePictureUrl());
-            User updatedUser = userRepository.save(user);
+    public ResponseEntity<?> updateUserProfile(@PathVariable String username, @RequestBody UpdateUserRequest request) {
+        return userRepository.findByUsername(username).map(userToUpdate -> {
+
+            if (request.getBio() != null) {
+                userToUpdate.setBio(request.getBio());
+            }
+
+            if (request.getProfilePictureUrl() != null) {
+                userToUpdate.setProfilePictureUrl(request.getProfilePictureUrl());
+            }
+
+            if (request.getUsername() != null && !request.getUsername().isEmpty() && !request.getUsername().equals(username)) {
+                if (userRepository.findByUsername(request.getUsername()).isPresent()) {
+                    return ResponseEntity.status(HttpStatus.CONFLICT).body("Username already taken");
+                }
+                userToUpdate.setUsername(request.getUsername());
+            }
+
+            User updatedUser = userRepository.save(userToUpdate);
             return ResponseEntity.ok(updatedUser);
+
         }).orElse(ResponseEntity.notFound().build());
     }
 }

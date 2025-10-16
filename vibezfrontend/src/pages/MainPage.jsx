@@ -14,7 +14,7 @@ const PlusIcon = () => ( <svg className="w-8 h-8" fill="none" stroke="currentCol
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
 const TagIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zM17 11h.01M17 7h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5a2 2 0 012-2zM7 17h.01M7 13h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg> );
 
-export default function MainPage({ user, auth }) {
+export default function MainPage({ user, auth ,appUser}) {
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isAsideOpen, setIsAsideOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -32,7 +32,7 @@ export default function MainPage({ user, auth }) {
 
     useEffect(() => { fetchVideos(); }, []);
 
-    const username = user.email.split('@')[0];
+    const username = appUser.username;
 
     return (
         <div className="w-screen h-screen bg-black text-white relative overflow-hidden">
@@ -259,7 +259,7 @@ const VideoPlayer = ({ videos, volume, setVolume }) => {
 
     return (
         <div className="w-full h-full bg-black flex flex-col relative group" onClick={togglePlay} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-            <video ref={videoRef} key={currentVideo.id} className="w-full h-full object-cover" src={currentVideo.videoUrl} poster={currentVideo.thumbnailUrl} />
+            <video ref={videoRef} key={currentVideo.id} className="w-full h-full object-cover" src={currentVideo.videoUrl}  />
 
             <button onClick={(e) => { e.stopPropagation(); goToPrevVideo(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
