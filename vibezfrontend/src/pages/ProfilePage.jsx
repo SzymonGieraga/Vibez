@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
 // Komponenty Ikon
@@ -10,7 +10,7 @@ const ProfileIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="current
 const PopularIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> );
 const SettingsIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
 
-export default function ProfilePage({ auth, currentUser }) {
+export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) {
     const { username } = useParams();
     const [profile, setProfile] = useState(null);
     const [reels, setReels] = useState([]);
@@ -18,14 +18,12 @@ export default function ProfilePage({ auth, currentUser }) {
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-    const loggedInUsername = currentUser.email.split('@')[0];
-    const isOwnProfile = loggedInUsername === username;
+    const isOwnProfile = appUser?.username === username;
 
     useEffect(() => {
         const fetchProfileData = async () => {
             setIsLoading(true);
             try {
-                // Równoległe pobieranie danych
                 const [profileRes, reelsRes] = await Promise.all([
                     fetch(`http://localhost:8080/api/users/${username}`),
                     fetch(`http://localhost:8080/api/reels/user/${username}`)
@@ -64,7 +62,7 @@ export default function ProfilePage({ auth, currentUser }) {
                 <div className="max-w-4xl mx-auto p-4 sm:p-6 md:p-8">
                     <header className="flex flex-col sm:flex-row items-center gap-6 mb-8">
                         <img
-                            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${username}&background=222&color=fff&size=128`}
+                            src={profile.profilePictureUrl || `https://ui-avatars.com/api/?name=${profile.username}&background=222&color=fff&size=128`}
                             alt="Profile"
                             className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-2 border-gray-700"
                         />
@@ -104,7 +102,7 @@ export default function ProfilePage({ auth, currentUser }) {
                     <h1 className="text-2xl font-bold mb-10">Vibez</h1>
                     <ul className="space-y-4">
                         <NavItem icon={<HomeIcon />} label="Main Page" to="/" />
-                        <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${loggedInUsername}`} />
+                        <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${appUser.username}`} />
                         <NavItem icon={<PopularIcon />} label="Popular" to="#" />
                         <NavItem icon={<SettingsIcon />} label="Settings" to="#" />
                     </ul>
@@ -117,7 +115,7 @@ export default function ProfilePage({ auth, currentUser }) {
             </nav>
             {isNavOpen && <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setIsNavOpen(false)} />}
 
-            {isEditModalOpen && <EditProfileModal user={profile} onClose={() => setIsEditModalOpen(false)} onProfileUpdate={setProfile} />}
+            {isEditModalOpen && <EditProfileModal user={profile} onClose={() => setIsEditModalOpen(false)} onProfileUpdate={setAppUser} />}
         </div>
     );
 }
@@ -132,45 +130,49 @@ const NavItem = ({ icon, label, to }) => (
 );
 
 function EditProfileModal({ user, onClose, onProfileUpdate }) {
+    const [newUsername, setNewUsername] = useState(user.username);
     const [bio, setBio] = useState(user.bio || '');
     const [profilePicFile, setProfilePicFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         setIsUploading(true);
         setError('');
 
-        let profilePictureUrl = user.profilePictureUrl;
-
         try {
+            // Create FormData with all profile information
+            const formData = new FormData();
+            formData.append('username', newUsername);
+            formData.append('bio', bio);
+
             if (profilePicFile) {
-                const fileName = `${Date.now()}_${profilePicFile.name}`;
-                const presignedUrlRes = await fetch(`http://localhost:8080/api/reels/generate-upload-url?fileName=${encodeURIComponent(fileName)}&contentType=${encodeURIComponent(profilePicFile.type)}`);
-                if (!presignedUrlRes.ok) throw new Error('Could not get upload URL for profile picture.');
-
-                const presignedUrl = await presignedUrlRes.text();
-
-                const uploadRes = await fetch(presignedUrl, { method: 'PUT', body: profilePicFile, headers: { 'Content-Type': profilePicFile.type } });
-                if (!uploadRes.ok) throw new Error('Profile picture upload failed.');
-
-                const r2PublicUrl = import.meta.env.VITE_R2_PUBLIC_URL;
-                if(!r2PublicUrl) throw new Error("VITE_R2_PUBLIC_URL is not defined in .env.local");
-
-                profilePictureUrl = `${r2PublicUrl}/${fileName}`;
+                formData.append('profilePicture', profilePicFile);
             }
 
+            // Send everything to backend in one request
             const updateRes = await fetch(`http://localhost:8080/api/users/${user.username}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ bio, profilePictureUrl })
+                body: formData
+                // Don't set Content-Type header - let browser set it with boundary
             });
-            if (!updateRes.ok) throw new Error('Failed to update profile.');
+
+            if (updateRes.status === 409) {
+                throw new Error('Username already taken.');
+            }
+            if (!updateRes.ok) {
+                throw new Error('Failed to update profile.');
+            }
 
             const updatedProfile = await updateRes.json();
             onProfileUpdate(updatedProfile);
             onClose();
+
+            if (newUsername !== user.username) {
+                navigate(`/profile/${newUsername}`, { replace: true });
+            }
 
         } catch (err) {
             setError(err.message);
@@ -186,17 +188,48 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
                 <h2 className="text-xl font-bold mb-6">Edit Profile</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
+                        <label className="block text-sm font-medium text-gray-400">Username</label>
+                        <input
+                            type="text"
+                            value={newUsername}
+                            onChange={(e) => setNewUsername(e.target.value)}
+                            required
+                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
+                    </div>
+                    <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">Profile Picture</label>
-                        <input type="file" accept="image/*" onChange={(e) => setProfilePicFile(e.target.files[0])} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700"/>
+                        <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => setProfilePicFile(e.target.files[0])}
+                            className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700"
+                        />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-400">Bio</label>
-                        <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows="3" className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" />
+                        <textarea
+                            value={bio}
+                            onChange={(e) => setBio(e.target.value)}
+                            rows="3"
+                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
                     </div>
                     {error && <p className="text-red-500 text-sm">{error}</p>}
                     <div className="flex justify-end pt-4">
-                        <button type="button" onClick={onClose} disabled={isUploading} className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
-                        <button type="submit" disabled={isUploading} className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={isUploading}
+                            className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={isUploading}
+                            className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500"
+                        >
                             {isUploading ? 'Saving...' : 'Save'}
                         </button>
                     </div>
@@ -205,4 +238,3 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
         </div>
     );
 }
-

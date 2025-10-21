@@ -1,65 +1,93 @@
 package com.vibez.controller;
 
-import com.vibez.dto.SaveReelRequest;
 import com.vibez.model.Reel;
+import com.vibez.model.User;
 import com.vibez.repository.ReelRepository;
-import com.vibez.service.StorageService;
-import org.springframework.beans.factory.annotation.Value;
+import com.vibez.repository.UserRepository;
+import com.vibez.service.ImageStorageService;
+import com.vibez.service.VideoStorageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
-
+import java.io.IOException;
+import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/reels")
-@CrossOrigin(origins = "http://localhost:5173")
 public class ReelController {
 
     private final ReelRepository reelRepository;
-    private final StorageService storageService;
+    private final UserRepository userRepository;
+    private final VideoStorageService videoStorageService;
+    private final ImageStorageService imageStorageService;
 
-    @Value("${r2.public.url}")
-    private String r2PublicUrl;
-
-    public ReelController(ReelRepository reelRepository, StorageService storageService) {
+    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService) {
         this.reelRepository = reelRepository;
-        this.storageService = storageService;
+        this.userRepository = userRepository;
+        this.videoStorageService = videoStorageService;
+        this.imageStorageService = imageStorageService;
     }
 
     @GetMapping
     public List<Reel> getAllReels() {
-        return reelRepository.findAll();
+        return reelRepository.findAllByOrderByIdDesc();
     }
 
-    @PostMapping
-    public Reel saveReel(@RequestBody SaveReelRequest request) {
-        Reel newReel = new Reel();
 
-        newReel.setVideoUrl(r2PublicUrl + "/" + request.getVideoFileName());
-        if (request.getThumbnailFileName() != null && !request.getThumbnailFileName().isEmpty()) {
-            newReel.setThumbnailUrl(r2PublicUrl + "/" + request.getThumbnailFileName());
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<Reel> createReel(
+            @RequestParam("videoFileName") String videoFileName,
+            @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
+            @RequestParam("username") String username,
+            @RequestParam("description") String description,
+            @RequestParam("author") String author,
+            @RequestParam("songTitle") String songTitle,
+            @RequestParam("genre") String genre,
+            @RequestParam("tags") String tags
+    ) throws IOException {
+
+        Optional<User> userOptional = userRepository.findByUsername(username);
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.badRequest().build();
         }
 
-        newReel.setDescription(request.getDescription());
-        newReel.setUsername(request.getUsername());
-        newReel.setAuthor(request.getAuthor());
-        newReel.setSongTitle(request.getSongTitle());
-        newReel.setGenre(request.getGenre());
-        newReel.setTags(request.getTags());
 
-        return reelRepository.save(newReel);
+        String thumbnailUrl = null;
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+            thumbnailUrl = imageStorageService.uploadFile(thumbnailFile);
+        }
+
+        Reel newReel = new Reel();
+        newReel.setUser(userOptional.get());
+        newReel.setVideoUrl(videoStorageService.buildPublicUrl(videoFileName));
+        newReel.setThumbnailUrl(thumbnailUrl);
+        newReel.setDescription(description);
+        newReel.setAuthor(author);
+        newReel.setSongTitle(songTitle);
+        newReel.setGenre(genre);
+        newReel.setTags(tags);
+
+        Reel savedReel = reelRepository.save(newReel);
+        return ResponseEntity.ok(savedReel);
     }
-
     @GetMapping("/generate-upload-url")
     public ResponseEntity<String> generateUploadUrl(@RequestParam String fileName, @RequestParam String contentType) {
-        String uploadUrl = storageService.generatePresignedUrl(fileName, contentType);
+        String uploadUrl = videoStorageService.generatePresignedUrl(fileName, contentType);
         return ResponseEntity.ok(uploadUrl);
     }
+
     @GetMapping("/user/{username:.+}")
     public ResponseEntity<List<Reel>> getReelsByUsername(@PathVariable String username) {
-        List<Reel> reels = reelRepository.findByUsername(username);
-        return ResponseEntity.ok(reels);
+        Optional<User> userOptional = userRepository.findByUsername(username);
+        if (userOptional.isPresent()) {
+            List<Reel> reels = reelRepository.findByUser(userOptional.get());
+            return ResponseEntity.ok(reels);
+        } else {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
     }
 }
 

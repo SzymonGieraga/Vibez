@@ -1,7 +1,6 @@
 package com.vibez.service;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -13,8 +12,10 @@ import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
-public class StorageService {
+public class VideoStorageService {
 
+    @Value("${r2.public.url}")
+    private String r2publicurl;
 
     private final S3Presigner s3Presigner;
 
@@ -35,6 +36,9 @@ public class StorageService {
 
         PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
         return presignedRequest.url().toString();
+    }
+    public String buildPublicUrl(String fileName) {
+        return r2publicurl + "/" + fileName;
     }
 }
 
