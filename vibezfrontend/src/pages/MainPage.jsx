@@ -13,6 +13,9 @@ const PlayIcon = () => ( <svg className="w-20 h-20 text-white opacity-70" fill="
 const PlusIcon = () => ( <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg> );
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
 const TagIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zM17 11h.01M17 7h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5a2 2 0 012-2zM7 17h.01M7 13h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg> );
+const HeartIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg>;
+const CommentIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
+
 
 export default function MainPage({ user, auth, appUser }) {
     const [isNavOpen, setIsNavOpen] = useState(false);
@@ -21,6 +24,7 @@ export default function MainPage({ user, auth, appUser }) {
     const [videos, setVideos] = useState([]);
     const [volume, setVolume] = useState(0);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+    const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
     const fetchVideos = async () => {
         try {
@@ -45,6 +49,7 @@ export default function MainPage({ user, auth, appUser }) {
                     setVolume={setVolume}
                     currentVideoIndex={currentVideoIndex}
                     setCurrentVideoIndex={setCurrentVideoIndex}
+                    setIsCommentsOpen={setIsCommentsOpen}
                 />
             </main>
 
@@ -76,6 +81,13 @@ export default function MainPage({ user, auth, appUser }) {
 
             {(isNavOpen || isAsideOpen) && (<div className="absolute inset-0 bg-black/30 z-20" onClick={() => { setIsNavOpen(false); setIsAsideOpen(false); }} />)}
             {isModalOpen && <AddReelModal user={appUser} onClose={() => setIsModalOpen(false)} onReelAdded={fetchVideos} />}
+            <CommentsPanel
+                isOpen={isCommentsOpen}
+                onClose={() => setIsCommentsOpen(false)}
+                reel={videos[currentVideoIndex]}
+                currentUser={appUser}
+                onCommentChange={fetchVideos}
+            />
         </div>
     );
 }
@@ -166,7 +178,7 @@ function AddReelModal({ user, onClose, onReelAdded }) {
 const FormInput = ({ label, name, value, onChange, placeholder, required = false }) => ( <div><label className="block text-sm font-medium text-gray-400">{label}</label><input type="text" name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" /></div> );
 const FileInput = ({ label, accept, onFileChange, required = false }) => ( <div><label className="block text-sm font-medium text-gray-400 mb-2">{label}</label><input type="file" accept={accept} onChange={(e) => onFileChange(e.target.files[0])} required={required} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700"/></div> );
 
-const VideoPlayer = ({ videos, volume, setVolume }) => {
+const VideoPlayer = ({ videos, volume, setVolume,setIsCommentsOpen }) => {
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [isPlaying, setIsPlaying] = useState(true);
     const [progress, setProgress] = useState(0);
@@ -251,6 +263,10 @@ const VideoPlayer = ({ videos, volume, setVolume }) => {
                         <p className="text-xs text-gray-300">{currentVideo.songTitle} by {currentVideo.author}</p>
                         <p className="text-xs text-gray-400 mt-1 truncate">{currentVideo.description}</p>
                     </div>
+                    <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-10">
+                        <InteractionButton icon={<HeartIcon />} count={currentVideo.likeCount} />
+                        <InteractionButton icon={<CommentIcon />} count={currentVideo.comments?.length || 0} onClick={() => setIsCommentsOpen(true)} />
+                    </div>
                     <div ref={progressRef} onClick={handleSeek} className="w-full bg-gray-500 bg-opacity-50 h-1.5 rounded-full mt-2 cursor-pointer">
                         <div style={{ width: `${progress}%` }} className="h-full bg-white rounded-full"></div>
                     </div>
@@ -268,6 +284,157 @@ const VideoPlayer = ({ videos, volume, setVolume }) => {
     );
 };
 
+const InteractionButton = ({ icon, count, onClick }) => (
+    <div className="flex flex-col items-center" onClick={onClick}>
+        <button className="w-12 h-12 bg-black/40 rounded-full flex items-center justify-center text-white">
+            {icon}
+        </button>
+        <span className="text-xs font-semibold mt-1">{count}</span>
+    </div>
+);
+const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) => {
+    const [newCommentText, setNewCommentText] = useState("");
+
+    const handleAddComment = async (e) => {
+        e.preventDefault();
+        if (!newCommentText.trim() || !reel) return;
+
+        const params = new URLSearchParams({
+            text: newCommentText,
+            reelId: reel.id,
+            username: currentUser.username
+        });
+
+        try {
+            const response = await fetch(`http://localhost:8080/api/comments?${params.toString()}`, {
+                method: 'POST'
+            });
+            if (!response.ok) throw new Error('Failed to add comment');
+
+            onCommentChange();
+            setNewCommentText("");
+        } catch (error) {
+            console.error("Error adding comment:", error);
+        }
+    };
+
+    const handleUpdateComment = async (commentId, text) => {
+        const params = new URLSearchParams({ username: currentUser.username });
+        try {
+            const response = await fetch(`http://localhost:8080/api/comments/${commentId}?${params.toString()}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text: text })
+            });
+            if (!response.ok) throw new Error('Failed to update comment');
+            onCommentChange();
+        } catch (error) { console.error("Error updating comment:", error); }
+    };
+
+    const handleDeleteComment = async (commentId) => {
+        const params = new URLSearchParams({ username: currentUser.username });
+        if (window.confirm('Are you sure you want to delete this comment?')) {
+            try {
+                await fetch(`http://localhost:8080/api/comments/${commentId}?${params.toString()}`, { method: 'DELETE' });
+                onCommentChange();
+            } catch (error) { console.error("Error deleting comment:", error); }
+        }
+    };
+
+    const handlePinComment = async (commentId) => {
+        const params = new URLSearchParams({ username: currentUser.username });
+        try {
+            await fetch(`http://localhost:8080/api/comments/${commentId}/pin?${params.toString()}`, { method: 'POST' });
+            onCommentChange();
+        } catch (error) { console.error("Error pinning comment:", error); }
+    };
+
+    return (
+        <div className={`absolute top-0 right-0 h-full w-96 bg-black/80 backdrop-blur-md border-l border-gray-800 flex flex-col transition-transform duration-300 z-40 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+            <div className="p-4 border-b border-gray-700 flex justify-between items-center">
+                <h2 className="font-bold text-lg">Comments ({reel?.comments?.length || 0})</h2>
+                <button onClick={onClose} className="text-2xl">&times;</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Sortujemy komentarze, sprawdzając, czy lista istnieje */}
+                {reel?.comments?.slice().sort((a, b) => b.isPinned - a.isPinned).map(comment => (
+                    <CommentItem
+                        key={comment.id}
+                        comment={comment}
+                        currentUser={currentUser}
+                        reelOwnerUsername={reel.username}
+                        onUpdate={handleUpdateComment}
+                        onDelete={handleDeleteComment}
+                        onPin={handlePinComment}
+                    />
+                ))}
+            </div>
+
+            <form onSubmit={handleAddComment} className="p-4 border-t border-gray-700">
+                <input
+                    type="text"
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                    placeholder="Add a comment..."
+                    className="w-full bg-gray-800 border border-gray-700 rounded-full py-2 px-4 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                />
+            </form>
+        </div>
+    );
+};
+const CommentItem = ({ comment, currentUser, reelOwnerUsername, onUpdate, onDelete, onPin }) => {
+    const [isEditing, setIsEditing] = useState(false);
+    const [editText, setEditText] = useState(comment.text);
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+    const isOwner = currentUser?.username === comment.user.username;
+    const isReelOwner = currentUser?.username === reelOwnerUsername;
+    const isEdited = new Date(comment.createdAt) < new Date(comment.lastModifiedAt);
+
+    const handleUpdate = (e) => {
+        e.preventDefault();
+        onUpdate(comment.id, editText);
+        setIsEditing(false);
+    };
+
+    return (
+        <div className="flex items-start gap-3">
+            <img src={comment.user.profilePictureUrl || `https://ui-avatars.com/api/?name=${comment.user.username}&background=333&color=fff&size=40`} alt="avatar" className="w-10 h-10 rounded-full" />
+            <div className="flex-1">
+                <div className="flex items-center gap-2 text-xs text-gray-400">
+                    <span>@{comment.user.username}</span>
+                    {isEdited && <span>(edytowany)</span>}
+                </div>
+                {!isEditing ? (
+                    <p className="text-sm text-white">{comment.text}</p>
+                ) : (
+                    <form onSubmit={handleUpdate} className="mt-1">
+                        <textarea value={editText} onChange={(e) => setEditText(e.target.value)} className="w-full bg-gray-700 text-white p-2 rounded-md text-sm" />
+                        <div className="flex gap-2 mt-1">
+                            <button type="submit" className="text-xs bg-white text-black px-2 py-1 rounded">Save</button>
+                            <button type="button" onClick={() => setIsEditing(false)} className="text-xs text-gray-400">Cancel</button>
+                        </div>
+                    </form>
+                )}
+                <div className="flex items-center gap-4 text-xs text-gray-500 mt-1 relative">
+                    <span>Like ({comment.likeCount})</span>
+                    <span>Reply</span>
+                    {(isOwner || isReelOwner) && (
+                        <button onClick={() => setIsMenuOpen(prev => !prev)} className="font-bold">...</button>
+                    )}
+                    {isMenuOpen && (
+                        <div className="absolute top-5 right-0 bg-gray-800 rounded-md shadow-lg p-2 text-white text-sm z-10 w-28">
+                            {isOwner && <button onClick={() => { setIsEditing(true); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">Edit</button>}
+                            {isOwner && <button onClick={() => { onDelete(comment.id); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">Delete</button>}
+                            {isReelOwner && <button onClick={() => { onPin(comment.id); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">{comment.isPinned ? 'Unpin' : 'Pin'}</button>}
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => (
     <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
         <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>

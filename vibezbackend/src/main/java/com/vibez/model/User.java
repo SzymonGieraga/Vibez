@@ -1,11 +1,9 @@
 package com.vibez.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import jakarta.persistence.*;
+
+import java.util.List;
 
 @Entity
 @Table(name = "app_users")
@@ -23,6 +21,10 @@ public class User {
 
     private String bio;
     private String profilePictureUrl;
+
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonBackReference
+    private List<Comment> comments;
 
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
