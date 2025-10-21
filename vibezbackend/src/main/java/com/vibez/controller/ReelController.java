@@ -1,14 +1,16 @@
 package com.vibez.controller;
 
 import com.vibez.model.Reel;
-import com.vibez.dto.SaveReelRequest;
 import com.vibez.model.User;
 import com.vibez.repository.ReelRepository;
 import com.vibez.repository.UserRepository;
-import com.vibez.service.StorageService;
+import com.vibez.service.ImageStorageService;
+import com.vibez.service.VideoStorageService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -19,12 +21,14 @@ public class ReelController {
 
     private final ReelRepository reelRepository;
     private final UserRepository userRepository;
-    private final StorageService storageService;
+    private final VideoStorageService videoStorageService;
+    private final ImageStorageService imageStorageService;
 
-    public ReelController(ReelRepository reelRepository, UserRepository userRepository, StorageService storageService) {
+    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService) {
         this.reelRepository = reelRepository;
         this.userRepository = userRepository;
-        this.storageService = storageService;
+        this.videoStorageService = videoStorageService;
+        this.imageStorageService = imageStorageService;
     }
 
     @GetMapping
@@ -32,34 +36,46 @@ public class ReelController {
         return reelRepository.findAllByOrderByIdDesc();
     }
 
-    @PostMapping
-    public ResponseEntity<Reel> createReel(@RequestBody SaveReelRequest request) {
-        Optional<User> userOptional = userRepository.findByUsername(request.getUsername());
+
+    @PostMapping(consumes = "multipart/form-data")
+    public ResponseEntity<Reel> createReel(
+            @RequestParam("videoFileName") String videoFileName,
+            @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
+            @RequestParam("username") String username,
+            @RequestParam("description") String description,
+            @RequestParam("author") String author,
+            @RequestParam("songTitle") String songTitle,
+            @RequestParam("genre") String genre,
+            @RequestParam("tags") String tags
+    ) throws IOException {
+
+        Optional<User> userOptional = userRepository.findByUsername(username);
         if (userOptional.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        User user = userOptional.get();
 
-        String videoUrl = storageService.buildPublicUrl(request.getVideoFileName());
-        String thumbnailUrl = request.getThumbnailFileName() != null ? storageService.buildPublicUrl(request.getThumbnailFileName()) : null;
+
+        String thumbnailUrl = null;
+        if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
+            thumbnailUrl = imageStorageService.uploadFile(thumbnailFile);
+        }
 
         Reel newReel = new Reel();
-        newReel.setUser(user);
-        newReel.setVideoUrl(videoUrl);
+        newReel.setUser(userOptional.get());
+        newReel.setVideoUrl(videoStorageService.buildPublicUrl(videoFileName));
         newReel.setThumbnailUrl(thumbnailUrl);
-        newReel.setDescription(request.getDescription());
-        newReel.setAuthor(request.getAuthor());
-        newReel.setSongTitle(request.getSongTitle());
-        newReel.setGenre(request.getGenre());
-        newReel.setTags(request.getTags());
+        newReel.setDescription(description);
+        newReel.setAuthor(author);
+        newReel.setSongTitle(songTitle);
+        newReel.setGenre(genre);
+        newReel.setTags(tags);
 
         Reel savedReel = reelRepository.save(newReel);
         return ResponseEntity.ok(savedReel);
     }
-
     @GetMapping("/generate-upload-url")
     public ResponseEntity<String> generateUploadUrl(@RequestParam String fileName, @RequestParam String contentType) {
-        String uploadUrl = storageService.generatePresignedUrl(fileName, contentType);
+        String uploadUrl = videoStorageService.generatePresignedUrl(fileName, contentType);
         return ResponseEntity.ok(uploadUrl);
     }
 

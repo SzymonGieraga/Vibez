@@ -45,18 +45,12 @@ function App() {
                     const token = await currentUser.getIdToken();
                     const response = await fetch('http://localhost:8080/api/users/sync', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            email: currentUser.email,
-                            firebaseUid: currentUser.uid
-                        })
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ email: currentUser.email, firebaseUid: currentUser.uid })
                     });
                     if (!response.ok) throw new Error("Sync failed");
                     const appUserData = await response.json();
-                    setAppUser(appUserData);
+                    setAppUser(appUserData); // Zapisujemy dane z naszej bazy
                 } catch (error) {
                     console.error("User sync failed:", error);
                     setAppUser(null);
@@ -78,7 +72,7 @@ function App() {
     return (
         <Routes>
             <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
-            <Route path="/profile/:username" element={user && appUser ? <ProfilePage auth={auth} currentUser={user} appUser={appUser} /> : <Navigate to="/auth" />} />
+            <Route path="/profile/:username" element={user && appUser ? <ProfilePage auth={auth} currentUser={user} appUser={appUser} setAppUser={setAppUser} /> : <Navigate to="/auth" />} />
             <Route path="/" element={user && appUser ? <MainPage auth={auth} user={user} appUser={appUser} /> : <Navigate to="/auth" />} />
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>

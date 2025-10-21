@@ -14,12 +14,13 @@ const PlusIcon = () => ( <svg className="w-8 h-8" fill="none" stroke="currentCol
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
 const TagIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zM17 11h.01M17 7h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5a2 2 0 012-2zM7 17h.01M7 13h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg> );
 
-export default function MainPage({ user, auth ,appUser}) {
+export default function MainPage({ user, auth, appUser }) {
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isAsideOpen, setIsAsideOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [videos, setVideos] = useState([]);
     const [volume, setVolume] = useState(0);
+    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
     const fetchVideos = async () => {
         try {
@@ -27,36 +28,35 @@ export default function MainPage({ user, auth ,appUser}) {
             if (!response.ok) throw new Error('Network response was not ok');
             const data = await response.json();
             setVideos(data);
+            setCurrentVideoIndex(0);
         } catch (error) { console.error("Błąd podczas pobierania filmów:", error); }
     };
 
-    useEffect(() => { fetchVideos(); }, []);
-
-    const username = appUser.username;
+    useEffect(() => {
+        fetchVideos();
+    }, []);
 
     return (
         <div className="w-screen h-screen bg-black text-white relative overflow-hidden">
             <main className="w-full h-full">
-                <VideoPlayer videos={videos} volume={volume} setVolume={setVolume} />
+                <VideoPlayer
+                    videos={videos}
+                    volume={volume}
+                    setVolume={setVolume}
+                    currentVideoIndex={currentVideoIndex}
+                    setCurrentVideoIndex={setCurrentVideoIndex}
+                />
             </main>
 
-            <div className="absolute top-4 left-4 z-30">
-                <button onClick={() => setIsNavOpen(true)} className="p-2 bg-black/30 rounded-full hover:bg-black/50">
-                    <MenuIcon />
-                </button>
-            </div>
-            <div className="absolute top-4 right-4 z-30">
-                <button onClick={() => setIsAsideOpen(true)} className="p-2 bg-black/30 rounded-full hover:bg-black/50">
-                    <TagIcon />
-                </button>
-            </div>
+            <div className="absolute top-4 left-4 z-30"><button onClick={() => setIsNavOpen(true)} className="p-2 bg-black/30 rounded-full hover:bg-black/50"><MenuIcon /></button></div>
+            <div className="absolute top-4 right-4 z-30"><button onClick={() => setIsAsideOpen(true)} className="p-2 bg-black/30 rounded-full hover:bg-black/50"><TagIcon /></button></div>
 
             <nav className={`absolute top-0 left-0 h-full w-72 bg-black/80 backdrop-blur-md border-r border-gray-800 p-6 flex flex-col justify-between transition-transform duration-300 z-40 ${isNavOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div>
                     <h1 className="text-2xl font-bold mb-10">Vibez</h1>
                     <ul className="space-y-4">
                         <NavItem icon={<HomeIcon />} label="Main Page" to="/" />
-                        <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${username}`} />
+                        <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${appUser.username}`} />
                         <NavItem icon={<PopularIcon />} label="Popular" to="#" />
                         <NavItem icon={<SettingsIcon />} label="Settings" to="#" />
                     </ul>
@@ -70,47 +70,23 @@ export default function MainPage({ user, auth ,appUser}) {
 
             <aside className={`absolute top-0 right-0 h-full w-72 bg-black/80 backdrop-blur-md border-l border-gray-800 p-6 transition-transform duration-300 z-40 ${isAsideOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                 <h2 className="text-lg font-semibold mb-4">Suggested Tags</h2>
-                <div className="flex flex-wrap gap-2">
-                    <Tag name="#rock" /> <Tag name="#chill" /> <Tag name="#newmusic" />
-                </div>
-                <div className="absolute bottom-6 right-6">
-                    <button onClick={() => setIsModalOpen(true)} className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:bg-gray-200 transition-colors">
-                        <PlusIcon />
-                    </button>
-                </div>
+                <div className="flex flex-wrap gap-2"><Tag name="#rock" /> <Tag name="#chill" /> <Tag name="#newmusic" /></div>
+                <div className="absolute bottom-6 right-6"><button onClick={() => setIsModalOpen(true)} className="w-16 h-16 bg-white text-black rounded-full flex items-center justify-center shadow-lg hover:bg-gray-200 transition-colors"><PlusIcon /></button></div>
             </aside>
 
-            {(isNavOpen || isAsideOpen) && (
-                <div
-                    className="absolute inset-0 bg-black/30 z-20"
-                    onClick={() => {
-                        setIsNavOpen(false);
-                        setIsAsideOpen(false);
-                    }}
-                />
-            )}
-
-            {isModalOpen && <AddReelModal user={user} onClose={() => setIsModalOpen(false)} onReelAdded={fetchVideos} />}
+            {(isNavOpen || isAsideOpen) && (<div className="absolute inset-0 bg-black/30 z-20" onClick={() => { setIsNavOpen(false); setIsAsideOpen(false); }} />)}
+            {isModalOpen && <AddReelModal user={appUser} onClose={() => setIsModalOpen(false)} onReelAdded={fetchVideos} />}
         </div>
     );
 }
 
-const NavItem = ({ icon, label, to = "#" }) => (
-    <li>
-        <Link to={to} className="flex items-center space-x-3 text-gray-400 hover:text-white">
-            {icon}
-            <span className="font-semibold">{label}</span>
-        </Link>
-    </li>
-);
+const NavItem = ({ icon, label, to = "#" }) => ( <li><Link to={to} className="flex items-center space-x-3 text-gray-400 hover:text-white">{icon}<span className="font-semibold">{label}</span></Link></li> );
 const Tag = ({ name }) => ( <span className="bg-gray-800 text-gray-300 text-xs font-semibold px-2.5 py-1 rounded-full cursor-pointer hover:bg-gray-700">{name}</span> );
 
 function AddReelModal({ user, onClose, onReelAdded }) {
     const [videoFile, setVideoFile] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
-    const [formData, setFormData] = useState({
-        description: '', author: '', songTitle: '', genre: '', tags: ''
-    });
+    const [formData, setFormData] = useState({ description: '', author: '', songTitle: '', genre: '', tags: '' });
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState('');
 
@@ -131,25 +107,31 @@ function AddReelModal({ user, onClose, onReelAdded }) {
             if (!videoUrlResponse.ok) throw new Error('Could not get video upload URL.');
             const presignedVideoUrl = await videoUrlResponse.text();
 
-            let thumbnailFileName = null;
+            const uploadVideoRes = await fetch(presignedVideoUrl, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
+            if (!uploadVideoRes.ok) throw new Error('Video upload to R2 failed.');
+
+
+            const formDataToSend = new FormData();
+            formDataToSend.append('videoFileName', videoFileName);
             if (thumbnailFile) {
-                thumbnailFileName = `${Date.now()}_${thumbnailFile.name}`;
-                const thumbUrlResponse = await fetch(`http://localhost:8080/api/reels/generate-upload-url?fileName=${encodeURIComponent(thumbnailFileName)}&contentType=${encodeURIComponent(thumbnailFile.type)}`);
-                if (!thumbUrlResponse.ok) throw new Error('Could not get thumbnail upload URL.');
-                const presignedThumbnailUrl = await thumbUrlResponse.text();
-
-                await fetch(presignedThumbnailUrl, { method: 'PUT', body: thumbnailFile, headers: { 'Content-Type': thumbnailFile.type } });
+                formDataToSend.append('thumbnailFile', thumbnailFile);
             }
-
-            const uploadResponse = await fetch(presignedVideoUrl, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-            if (!uploadResponse.ok) throw new Error('File upload to R2 failed.');
+            formDataToSend.append('username', user.username);
+            formDataToSend.append('description', formData.description);
+            formDataToSend.append('author', formData.author);
+            formDataToSend.append('songTitle', formData.songTitle);
+            formDataToSend.append('genre', formData.genre);
+            formDataToSend.append('tags', formData.tags);
 
             const saveResponse = await fetch('http://localhost:8080/api/reels', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...formData, videoFileName: videoFileName, thumbnailFileName: thumbnailFileName, username: user.email.split('@')[0] })
+                body: formDataToSend,
             });
-            if (!saveResponse.ok) throw new Error('Failed to save reel metadata.');
+
+            if (!saveResponse.ok) {
+                const errorText = await saveResponse.text();
+                throw new Error(`Failed to save reel: ${errorText}`);
+            }
 
             onReelAdded();
             onClose();
@@ -161,6 +143,7 @@ function AddReelModal({ user, onClose, onReelAdded }) {
         }
     };
 
+
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
             <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
@@ -170,25 +153,16 @@ function AddReelModal({ user, onClose, onReelAdded }) {
                     <FormInput label="Author" name="author" value={formData.author} onChange={handleInputChange} required />
                     <FormInput label="Genre" name="genre" value={formData.genre} onChange={handleInputChange} />
                     <FormInput label="Tags (comma separated)" name="tags" value={formData.tags} onChange={handleInputChange} placeholder="e.g. rock, chill, 80s" />
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400">Description</label>
-                        <textarea name="description" value={formData.description} onChange={handleInputChange} required rows="3" className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" />
-                    </div>
+                    <div><label className="block text-sm font-medium text-gray-400">Description</label><textarea name="description" value={formData.description} onChange={handleInputChange} required rows="3" className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" /></div>
                     <FileInput label="Video File" accept="video/*" onFileChange={setVideoFile} required />
                     <FileInput label="Thumbnail (optional)" accept="image/*" onFileChange={setThumbnailFile} />
                     {error && <p className="text-red-500 text-sm">{error}</p>}
-                    <div className="flex justify-end pt-4">
-                        <button type="button" onClick={onClose} disabled={uploading} className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white">Cancel</button>
-                        <button type="submit" disabled={uploading} className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500">
-                            {uploading ? 'Uploading...' : 'Publish'}
-                        </button>
-                    </div>
+                    <div className="flex justify-end pt-4"><button type="button" onClick={onClose} disabled={uploading} className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white">Cancel</button><button type="submit" disabled={uploading} className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500">{uploading ? 'Uploading...' : 'Publish'}</button></div>
                 </form>
             </div>
         </div>
     );
 }
-
 const FormInput = ({ label, name, value, onChange, placeholder, required = false }) => ( <div><label className="block text-sm font-medium text-gray-400">{label}</label><input type="text" name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" /></div> );
 const FileInput = ({ label, accept, onFileChange, required = false }) => ( <div><label className="block text-sm font-medium text-gray-400 mb-2">{label}</label><input type="file" accept={accept} onChange={(e) => onFileChange(e.target.files[0])} required={required} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700"/></div> );
 
