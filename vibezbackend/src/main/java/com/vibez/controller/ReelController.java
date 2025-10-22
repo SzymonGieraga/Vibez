@@ -4,8 +4,10 @@ import com.vibez.model.Reel;
 import com.vibez.model.User;
 import com.vibez.repository.ReelRepository;
 import com.vibez.repository.UserRepository;
+import com.vibez.service.ReelService;
 import com.vibez.service.ImageStorageService;
 import com.vibez.service.VideoStorageService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -23,12 +25,14 @@ public class ReelController {
     private final UserRepository userRepository;
     private final VideoStorageService videoStorageService;
     private final ImageStorageService imageStorageService;
+    private final ReelService reelService;
 
-    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService) {
+    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService, ReelService reelService) {
         this.reelRepository = reelRepository;
         this.userRepository = userRepository;
         this.videoStorageService = videoStorageService;
         this.imageStorageService = imageStorageService;
+        this.reelService = reelService;
     }
 
     @GetMapping
@@ -87,6 +91,35 @@ public class ReelController {
             return ResponseEntity.ok(reels);
         } else {
             return ResponseEntity.ok(Collections.emptyList());
+        }
+    }
+
+    @GetMapping("/liked/{username:.+}")
+    public ResponseEntity<List<Reel>> getLikedReels(@PathVariable String username) {
+        try {
+            List<Reel> likedReels = reelService.getLikedReelsByUsername(username);
+            return ResponseEntity.ok(likedReels);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+    @PostMapping("/{reelId}/like")
+    public ResponseEntity<Reel> likeReel(@PathVariable Long reelId, @RequestParam String username) {
+        try {
+            Reel likedReel = reelService.likeReel(reelId, username);
+            return ResponseEntity.ok(likedReel);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @DeleteMapping("/{reelId}/like")
+    public ResponseEntity<Reel> unlikeReel(@PathVariable Long reelId, @RequestParam String username) {
+        try {
+            Reel unlikedReel = reelService.unlikeReel(reelId, username);
+            return ResponseEntity.ok(unlikedReel);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
         }
     }
 }

@@ -13,7 +13,16 @@ const PlayIcon = () => ( <svg className="w-20 h-20 text-white opacity-70" fill="
 const PlusIcon = () => ( <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg> );
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
 const TagIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2V5a2 2 0 012-2zM17 11h.01M17 7h5a2 2 0 012 2v5a2 2 0 01-2 2h-5a2 2 0 01-2-2v-5a2 2 0 012-2zM7 17h.01M7 13h5a2 2 0 012 2v5a2 2 0 01-2 2H7a2 2 0 01-2-2v-5a2 2 0 012-2z" /></svg> );
-const HeartIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg>;
+const HeartIcon = ({ isLiked }) => (
+    <svg
+        className={`w-8 h-8 ${isLiked ? 'text-red-500' : ''}`}
+        fill={isLiked ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+    >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
+    </svg>
+);
 const CommentIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 
 
@@ -25,6 +34,8 @@ export default function MainPage({ user, auth, appUser }) {
     const [volume, setVolume] = useState(0);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
+    const [likedReelIds, setLikedReelIds] = useState(new Set());
+    const [isTogglingLike, setIsTogglingLike] = useState(false);
 
     const fetchVideos = async () => {
         try {
@@ -36,10 +47,65 @@ export default function MainPage({ user, auth, appUser }) {
         } catch (error) { console.error("Błąd podczas pobierania filmów:", error); }
     };
 
+    const fetchLikedReels = async (username) => {
+        if (!username) return;
+        try {
+            const response = await fetch(`http://localhost:8080/api/reels/liked/${username}`);
+            if (!response.ok) throw new Error('Network response was not ok');
+            const likedReels = await response.json(); // Oczekuje Listy<Reel>
+            const idSet = new Set(likedReels.filter(reel => reel != null).map(reel => reel.id));
+            setLikedReelIds(idSet);
+        } catch (error) {
+            console.error("Błąd podczas pobierania polubionych filmów:", error);
+        }
+    };
+
     useEffect(() => {
         fetchVideos();
-    }, []);
+        if (appUser?.username) {
+            fetchLikedReels(appUser.username);
+        }
+    }, [appUser]);
 
+    const handleLikeToggle = async (reelId, isCurrentlyLiked) => {
+        if (!appUser?.username) {
+            console.log("Musisz być zalogowany, aby polubić.");
+            return;
+        }
+
+        setIsTogglingLike(true);
+
+        const username = appUser.username;
+        const method = isCurrentlyLiked ? 'DELETE' : 'POST';
+        const url = `http://localhost:8080/api/reels/${reelId}/like?username=${username}`;
+
+        try {
+            const response = await fetch(url, { method });
+            if (!response.ok) throw new Error('Failed to update like status');
+
+            const updatedReel = await response.json();
+            setLikedReelIds(prevSet => {
+                const newSet = new Set(prevSet);
+                if (isCurrentlyLiked) {
+                    newSet.delete(reelId);
+                } else {
+                    newSet.add(reelId);
+                }
+                return newSet;
+            });
+            setVideos(prevVideos =>
+                prevVideos.map(video =>
+                    video.id === reelId
+                        ? { ...video, likeCount: updatedReel.likeCount }
+                        : video
+                )
+            );
+        } catch (error) {
+            console.error("Error toggling like:", error);
+        }finally {
+            setIsTogglingLike(false);
+        }
+    };
     return (
         <div className="w-screen h-screen bg-black text-white relative overflow-hidden">
             <main className="w-full h-full">
@@ -50,6 +116,10 @@ export default function MainPage({ user, auth, appUser }) {
                     currentVideoIndex={currentVideoIndex}
                     setCurrentVideoIndex={setCurrentVideoIndex}
                     setIsCommentsOpen={setIsCommentsOpen}
+                    appUser={appUser}
+                    likedReelIds={likedReelIds}
+                    onLikeToggle={handleLikeToggle}
+                    isTogglingLike={isTogglingLike}
                 />
             </main>
 
@@ -178,8 +248,7 @@ function AddReelModal({ user, onClose, onReelAdded }) {
 const FormInput = ({ label, name, value, onChange, placeholder, required = false }) => ( <div><label className="block text-sm font-medium text-gray-400">{label}</label><input type="text" name={name} value={value} onChange={onChange} placeholder={placeholder} required={required} className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" /></div> );
 const FileInput = ({ label, accept, onFileChange, required = false }) => ( <div><label className="block text-sm font-medium text-gray-400 mb-2">{label}</label><input type="file" accept={accept} onChange={(e) => onFileChange(e.target.files[0])} required={required} className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-white hover:file:bg-gray-700"/></div> );
 
-const VideoPlayer = ({ videos, volume, setVolume,setIsCommentsOpen }) => {
-    const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+const VideoPlayer = ({ videos, volume, setVolume, setIsCommentsOpen, appUser, likedReelIds, onLikeToggle, isTogglingLike, currentVideoIndex, setCurrentVideoIndex }) => {
     const [isPlaying, setIsPlaying] = useState(true);
     const [progress, setProgress] = useState(0);
     const [isDetailsVisible, setIsDetailsVisible] = useState(false);
@@ -214,6 +283,8 @@ const VideoPlayer = ({ videos, volume, setVolume,setIsCommentsOpen }) => {
     if (!currentVideo) {
         return <div className="text-gray-500 flex items-center justify-center h-full">No video to display.</div>;
     }
+
+    const isLiked = likedReelIds.has(currentVideo.id);
 
     const goToNextVideo = () => setCurrentVideoIndex((prev) => (prev + 1) % videos.length);
     const goToPrevVideo = () => setCurrentVideoIndex((prev) => (prev - 1 + videos.length) % videos.length);
@@ -264,7 +335,15 @@ const VideoPlayer = ({ videos, volume, setVolume,setIsCommentsOpen }) => {
                         <p className="text-xs text-gray-400 mt-1 truncate">{currentVideo.description}</p>
                     </div>
                     <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-10">
-                        <InteractionButton icon={<HeartIcon />} count={currentVideo.likeCount} />
+                        <InteractionButton
+                            icon={<HeartIcon isLiked={isLiked} />}
+                            count={currentVideo.likeCount}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onLikeToggle(currentVideo.id, isLiked);
+                            }}
+                            disabled={isTogglingLike}
+                        />
                         <InteractionButton icon={<CommentIcon />} count={currentVideo.comments?.length || 0} onClick={() => setIsCommentsOpen(true)} />
                     </div>
                     <div ref={progressRef} onClick={handleSeek} className="w-full bg-gray-500 bg-opacity-50 h-1.5 rounded-full mt-2 cursor-pointer">
@@ -284,9 +363,11 @@ const VideoPlayer = ({ videos, volume, setVolume,setIsCommentsOpen }) => {
     );
 };
 
-const InteractionButton = ({ icon, count, onClick }) => (
-    <div className="flex flex-col items-center" onClick={onClick}>
-        <button className="w-12 h-12 bg-black/40 rounded-full flex items-center justify-center text-white">
+const InteractionButton = ({ icon, count, onClick, disabled = false }) => ( // Dodano disabled
+    <div className="flex flex-col items-center" onClick={!disabled ? onClick : null}>
+        <button
+            className="w-12 h-12 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-50"
+            disabled={disabled}>
             {icon}
         </button>
         <span className="text-xs font-semibold mt-1">{count}</span>

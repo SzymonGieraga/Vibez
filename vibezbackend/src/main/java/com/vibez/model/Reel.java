@@ -1,11 +1,14 @@
 package com.vibez.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "reels")
@@ -21,9 +24,8 @@ public class Reel {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonIgnoreProperties({"comments", "reels", "email", "bio"})
+    @JsonIgnoreProperties({"comments", "reels", "email", "bio", "likes"})
     private User user;
-
 
 
     private String author;
@@ -36,6 +38,10 @@ public class Reel {
 
     private String tags;
     private int likeCount = 0;
+
+    @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<Like> likes = new HashSet<>();
 
     public Reel() {}
 
@@ -67,4 +73,17 @@ public class Reel {
     public void setComments(List<Comment> comments) { this.comments = comments; }
     public int getLikeCount() { return likeCount; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
+
+    public Set<Like> getLikes() { return likes; }
+    public void setLikes(Set<Like> likes) { this.likes = likes; }
+
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
 }

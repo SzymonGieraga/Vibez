@@ -1,9 +1,12 @@
 package com.vibez.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "app_users")
@@ -26,6 +29,10 @@ public class User {
     @JsonBackReference
     private List<Comment> comments;
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<Like> likes = new HashSet<>();
+
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
     public Long getId() {return id;}
@@ -38,5 +45,7 @@ public class User {
     public void setBio(String bio) {this.bio = bio;}
     public String getProfilePictureUrl() {return profilePictureUrl;}
     public void setProfilePictureUrl(String profilePictureUrl) {this.profilePictureUrl = profilePictureUrl;}
+    public Set<Like> getLikes() { return likes; }
+    public void setLikes(Set<Like> likes) { this.likes = likes; }
 }
 
