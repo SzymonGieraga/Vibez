@@ -7,11 +7,14 @@ import com.vibez.model.User;
 import com.vibez.repository.CommentRepository;
 import com.vibez.repository.ReelRepository;
 import com.vibez.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.vibez.service.CommentService;
 
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/comments")
@@ -20,29 +23,28 @@ public class CommentController {
     private final CommentRepository commentRepository;
     private final UserRepository userRepository;
     private final ReelRepository reelRepository;
+    private final CommentService commentService;
 
-    public CommentController(CommentRepository commentRepository, UserRepository userRepository, ReelRepository reelRepository) {
+    public CommentController(CommentRepository commentRepository, UserRepository userRepository, ReelRepository reelRepository, CommentService commentService) {
         this.commentRepository = commentRepository;
         this.userRepository = userRepository;
         this.reelRepository = reelRepository;
+        this.commentService = commentService;
     }
 
     @PostMapping
-    public ResponseEntity<Comment> addComment(@RequestParam String text, @RequestParam Long reelId, @RequestParam String username) {
-        Optional<User> userOptional = userRepository.findByUsername(username);
-        Optional<Reel> reelOptional = reelRepository.findById(reelId);
-
-        if (userOptional.isEmpty() || reelOptional.isEmpty()) {
-            return ResponseEntity.badRequest().build();
+    public ResponseEntity<Comment> addComment(
+            @RequestParam String text,
+            @RequestParam Long reelId,
+            @RequestParam String username,
+            @RequestParam(required = false) Long parentCommentId
+    ) {
+        try {
+            Comment savedComment = commentService.addComment(text, reelId, username, parentCommentId);
+            return ResponseEntity.status(HttpStatus.CREATED).body(savedComment);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.badRequest().body(null); // Lub .notFound()
         }
-
-        Comment newComment = new Comment();
-        newComment.setText(text);
-        newComment.setUser(userOptional.get());
-        newComment.setReel(reelOptional.get());
-
-        Comment savedComment = commentRepository.save(newComment);
-        return ResponseEntity.status(HttpStatus.CREATED).body(savedComment);
     }
 
     @PutMapping("/{commentId}")
@@ -80,6 +82,37 @@ public class CommentController {
         comment.setPinned(!comment.isPinned());
         Comment updatedComment = commentRepository.save(comment);
         return ResponseEntity.ok(updatedComment);
+    }
+    @PostMapping("/{commentId}/like")
+    public ResponseEntity<Comment> likeComment(@PathVariable Long commentId, @RequestParam String username) {
+        try {
+            Comment likedComment = commentService.likeComment(commentId, username);
+            return ResponseEntity.ok(likedComment);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+    }
+
+    @DeleteMapping("/{commentId}/like")
+    public ResponseEntity<Comment> unlikeComment(@PathVariable Long commentId, @RequestParam String username) {
+        try {
+            Comment unlikedComment = commentService.unlikeComment(commentId, username);
+            return ResponseEntity.ok(unlikedComment);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/liked/{username}")
+    public ResponseEntity<Set<Long>> getLikedCommentIds(@PathVariable String username) {
+        try {
+            Set<Long> likedIds = commentService.getLikedCommentIdsByUsername(username);
+            return ResponseEntity.ok(likedIds);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }
 

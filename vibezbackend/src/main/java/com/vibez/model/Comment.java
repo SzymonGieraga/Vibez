@@ -1,11 +1,14 @@
 package com.vibez.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "comments")
@@ -36,7 +39,7 @@ public class Comment {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    @JsonManagedReference
+    @JsonIgnoreProperties({"comments", "reels", "likedReels", "likedComments", "bio", "email"})
     private User user;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -51,9 +54,13 @@ public class Comment {
 
     @OneToMany(mappedBy = "parentComment", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
-    private List<Comment> replies = new ArrayList<>();
+    private Set<Comment> replies = new HashSet<>();
 
     private int likeCount = 0;
+
+    @OneToMany(mappedBy = "comment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<CommentLike> likes = new HashSet<>();
 
     public Long getId() {return id;}
     public void setId(Long id) {this.id = id;}
@@ -69,9 +76,22 @@ public class Comment {
     public void setReel(Reel reel) {this.reel = reel;}
     public Comment getParentComment() {return parentComment;}
     public void setParentComment(Comment parentComment) {this.parentComment = parentComment;}
-    public List<Comment> getReplies() {return replies;}
-    public void setReplies(List<Comment> replies) {this.replies = replies;}
+    public Set<Comment> getReplies() {return replies;}
+    public void setReplies(Set<Comment> replies) {this.replies = replies;}
     public int getLikeCount() {return likeCount;}
     public void setLikeCount(int likeCount) {this.likeCount = likeCount;}
+
+    public Set<CommentLike> getLikes() { return likes; }
+    public void setLikes(Set<CommentLike> likes) { this.likes = likes; }
+
+    public void incrementLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decrementLikeCount() {
+        if (this.likeCount > 0) {
+            this.likeCount--;
+        }
+    }
 }
 

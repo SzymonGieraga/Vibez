@@ -33,6 +33,11 @@ public class User {
     @JsonIgnore
     private Set<Like> likes = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<CommentLike> likedComments = new HashSet<>();
+
+
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
     public Long getId() {return id;}
@@ -47,5 +52,8 @@ public class User {
     public void setProfilePictureUrl(String profilePictureUrl) {this.profilePictureUrl = profilePictureUrl;}
     public Set<Like> getLikes() { return likes; }
     public void setLikes(Set<Like> likes) { this.likes = likes; }
+
+    public Set<CommentLike> getLikedComments() { return likedComments; }
+    public void setLikedComments(Set<CommentLike> likedComments) { this.likedComments = likedComments; }
 }
 

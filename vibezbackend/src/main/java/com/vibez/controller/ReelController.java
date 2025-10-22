@@ -37,7 +37,7 @@ public class ReelController {
 
     @GetMapping
     public List<Reel> getAllReels() {
-        return reelRepository.findAllByOrderByIdDesc();
+        return reelService.getAllReelsWithTopLevelComments();
     }
 
 
@@ -87,7 +87,7 @@ public class ReelController {
     public ResponseEntity<List<Reel>> getReelsByUsername(@PathVariable String username) {
         Optional<User> userOptional = userRepository.findByUsername(username);
         if (userOptional.isPresent()) {
-            List<Reel> reels = reelRepository.findByUser(userOptional.get());
+            List<Reel> reels = reelService.getReelsByUserWithTopLevelComments(userOptional.get());
             return ResponseEntity.ok(reels);
         } else {
             return ResponseEntity.ok(Collections.emptyList());

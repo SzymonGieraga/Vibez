@@ -23,6 +23,16 @@ const HeartIcon = ({ isLiked }) => (
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
     </svg>
 );
+const SmallHeartIcon = ({ isLiked, disabled }) => (
+    <svg
+        className={`w-4 h-4 inline -mt-0.5 ${isLiked ? 'text-red-500' : 'text-gray-500'} ${disabled ? 'opacity-50' : 'hover:text-white'}`}
+        fill={isLiked ? 'currentColor' : 'none'}
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+    >
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
+    </svg>
+);
 const CommentIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 
 
@@ -375,6 +385,61 @@ const InteractionButton = ({ icon, count, onClick, disabled = false }) => ( // D
 );
 const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) => {
     const [newCommentText, setNewCommentText] = useState("");
+    const [likedCommentIds, setLikedCommentIds] = useState(new Set());
+    const [togglingCommentLikes, setTogglingCommentLikes] = useState(new Set());
+    const [replyingTo, setReplyingTo] = useState(null);
+    const textInputRef = useRef(null);
+
+    useEffect(() => {
+        if (isOpen && currentUser?.username) {
+            const fetchLikedComments = async () => {
+                try {
+                    const response = await fetch(`http://localhost:8080/api/comments/liked/${currentUser.username}`);
+                    if (!response.ok) throw new Error('Failed to fetch liked comments');
+                    const ids = await response.json();
+                    setLikedCommentIds(new Set(ids));
+                } catch (error) {
+                    console.error("Error fetching liked comments:", error);
+                }
+            };
+            fetchLikedComments();
+        }
+    }, [isOpen, currentUser]);
+
+    const handleCommentLikeToggle = async (commentId, isCurrentlyLiked) => {
+        if (togglingCommentLikes.has(commentId)) return;
+        if (!currentUser?.username) return;
+
+        setTogglingCommentLikes(prev => new Set(prev).add(commentId));
+
+        const method = isCurrentlyLiked ? 'DELETE' : 'POST';
+        const url = `http://localhost:8080/api/comments/${commentId}/like?username=${currentUser.username}`;
+
+        try {
+            const response = await fetch(url, { method });
+            if (!response.ok) throw new Error('Failed to update comment like');
+
+            setLikedCommentIds(prev => {
+                const newSet = new Set(prev);
+                if (isCurrentlyLiked) {
+                    newSet.delete(commentId);
+                } else {
+                    newSet.add(commentId);
+                }
+                return newSet;
+            });
+            onCommentChange();
+
+        } catch (error) {
+            console.error("Error toggling comment like:", error);
+        } finally {
+            setTogglingCommentLikes(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(commentId);
+                return newSet;
+            });
+        }
+    };
 
     const handleAddComment = async (e) => {
         e.preventDefault();
@@ -386,6 +451,9 @@ const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) 
             username: currentUser.username
         });
 
+        if (replyingTo) {
+            params.append('parentCommentId', replyingTo.id);
+        }
         try {
             const response = await fetch(`http://localhost:8080/api/comments?${params.toString()}`, {
                 method: 'POST'
@@ -394,6 +462,7 @@ const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) 
 
             onCommentChange();
             setNewCommentText("");
+            setReplyingTo(null);
         } catch (error) {
             console.error("Error adding comment:", error);
         }
@@ -430,6 +499,11 @@ const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) 
         } catch (error) { console.error("Error pinning comment:", error); }
     };
 
+    const handleSetReplyTo = (comment) => {
+        setReplyingTo(comment);
+        textInputRef.current?.focus();
+    };
+
     return (
         <div className={`absolute top-0 right-0 h-full w-96 bg-black/80 backdrop-blur-md border-l border-gray-800 flex flex-col transition-transform duration-300 z-40 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
@@ -438,7 +512,6 @@ const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) 
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                {/* Sortujemy komentarze, sprawdzając, czy lista istnieje */}
                 {reel?.comments?.slice().sort((a, b) => b.isPinned - a.isPinned).map(comment => (
                     <CommentItem
                         key={comment.id}
@@ -448,30 +521,49 @@ const CommentsPanel = ({ isOpen, onClose, reel, currentUser, onCommentChange }) 
                         onUpdate={handleUpdateComment}
                         onDelete={handleDeleteComment}
                         onPin={handlePinComment}
+                        likedCommentIds={likedCommentIds}
+                        togglingCommentLikes={togglingCommentLikes}
+                        onLikeToggle={handleCommentLikeToggle}
+                        onSetReplyTo={handleSetReplyTo}
                     />
                 ))}
             </div>
 
             <form onSubmit={handleAddComment} className="p-4 border-t border-gray-700">
+                {replyingTo && (
+                    <div className="text-xs text-gray-400 mb-2">
+                        Replying to @{replyingTo.user.username}
+                        <button
+                            type="button"
+                            onClick={() => setReplyingTo(null)}
+                            className="ml-2 text-blue-400 hover:text-blue-300 font-bold"
+                        >
+                            [Cancel]
+                        </button>
+                    </div>
+                )}
                 <input
+                    ref={textInputRef}
                     type="text"
                     value={newCommentText}
                     onChange={(e) => setNewCommentText(e.target.value)}
-                    placeholder="Add a comment..."
-                    className="w-full bg-gray-800 border border-gray-700 rounded-full py-2 px-4 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                    placeholder={replyingTo ? "Add a reply..." : "Add a comment..."}
+                    className="w-full bg-gray-800 ... "
                 />
             </form>
         </div>
     );
 };
-const CommentItem = ({ comment, currentUser, reelOwnerUsername, onUpdate, onDelete, onPin }) => {
+const CommentItem = ({ comment, currentUser, reelOwnerUsername, onUpdate, onDelete, onPin,likedCommentIds, togglingCommentLikes, onLikeToggle, onSetReplyTo }) => {
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(comment.text);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
+    const isLiked = likedCommentIds.has(comment.id);
+    const isLikeDisabled = togglingCommentLikes.has(comment.id);
     const isOwner = currentUser?.username === comment.user.username;
     const isReelOwner = currentUser?.username === reelOwnerUsername;
-    const isEdited = new Date(comment.createdAt) < new Date(comment.lastModifiedAt);
+    const isEdited = new Date(comment.createdAt) < new Date(comment.lastModifiedAt)
 
     const handleUpdate = (e) => {
         e.preventDefault();
@@ -499,8 +591,21 @@ const CommentItem = ({ comment, currentUser, reelOwnerUsername, onUpdate, onDele
                     </form>
                 )}
                 <div className="flex items-center gap-4 text-xs text-gray-500 mt-1 relative">
-                    <span>Like ({comment.likeCount})</span>
-                    <span>Reply</span>
+                    <button
+                        onClick={() => onLikeToggle(comment.id, isLiked)}
+                        disabled={isLikeDisabled}
+                        className={`flex items-center gap-1 ${isLikeDisabled ? 'cursor-wait' : ''} ${isLiked ? 'text-red-500' : 'text-gray-500 hover:text-white'}`}
+                    >
+                        <SmallHeartIcon isLiked={isLiked} disabled={isLikeDisabled} />
+                        <span className={isLiked ? 'text-red-500' : 'text-gray-500'}>{comment.likeCount}</span>
+                    </button>
+
+                    <button
+                        onClick={() => onSetReplyTo(comment)}
+                        className="hover:text-white"
+                    >
+                        Reply
+                    </button>
                     {(isOwner || isReelOwner) && (
                         <button onClick={() => setIsMenuOpen(prev => !prev)} className="font-bold">...</button>
                     )}
@@ -512,6 +617,25 @@ const CommentItem = ({ comment, currentUser, reelOwnerUsername, onUpdate, onDele
                         </div>
                     )}
                 </div>
+                {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-4 pl-4 border-l-2 border-gray-700 space-y-4">
+                        {comment.replies.map(reply => (
+                            <CommentItem
+                                key={reply.id}
+                                comment={reply}
+                                currentUser={currentUser}
+                                reelOwnerUsername={reelOwnerUsername}
+                                onUpdate={onUpdate}
+                                onDelete={onDelete}
+                                onPin={onPin}
+                                likedCommentIds={likedCommentIds}
+                                togglingCommentLikes={togglingCommentLikes}
+                                onLikeToggle={onLikeToggle}
+                                onSetReplyTo={onSetReplyTo}
+                            />
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );

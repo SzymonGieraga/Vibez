@@ -3,6 +3,7 @@ package com.vibez.service;
 import com.vibez.model.Like;
 import com.vibez.model.Reel;
 import com.vibez.model.User;
+import com.vibez.model.Comment;
 import com.vibez.repository.LikeRepository;
 import com.vibez.repository.ReelRepository;
 import com.vibez.repository.UserRepository;
@@ -11,8 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -78,5 +78,43 @@ public class ReelService {
         return sortedLikes.stream()
                 .map(Like::getReel)
                 .collect(Collectors.toList());
+    }
+    public List<Reel> getAllReelsWithTopLevelComments() {
+        List<Reel> reels = reelRepository.findAllByOrderByIdDesc();
+
+        for (Reel reel : reels) {
+            if (reel.getComments() != null) {
+                Map<Long, Comment> uniqueComments = new LinkedHashMap<>();
+
+                for (Comment comment : reel.getComments()) {
+                    if (comment.getParentComment() == null) {
+                        uniqueComments.putIfAbsent(comment.getId(), comment);
+                    }
+                }
+
+                List<Comment> topLevel = new ArrayList<>(uniqueComments.values());
+
+                System.out.println("Reel " + reel.getId() + ": " +
+                        reel.getComments().size() + " total -> " +
+                        topLevel.size() + " unique top-level");
+
+                reel.setComments(topLevel);
+            }
+        }
+
+        return reels;
+    }
+
+    public List<Reel> getReelsByUserWithTopLevelComments(User user) {
+        List<Reel> reels = reelRepository.findByUser(user);
+
+        reels.forEach(reel -> {
+            List<Comment> topLevelComments = reel.getComments().stream()
+                    .filter(comment -> comment.getParentComment() == null)
+                    .collect(Collectors.toList());
+            reel.setComments(topLevelComments);
+        });
+
+        return reels;
     }
 }
