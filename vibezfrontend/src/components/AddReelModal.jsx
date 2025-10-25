@@ -48,7 +48,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
 
         try {
             const videoFileName = `${Date.now()}_${videoFile.name}`;
-            const videoUrlResponse = await fetch(`http://localhost:8080/api/reels/generate-video-upload-url?fileName=${encodeURIComponent(videoFileName)}&contentType=${encodeURIComponent(videoFile.type)}`);
+            const videoUrlResponse = await fetch(`http://localhost:8080/api/reels/generate-upload-url?fileName=${encodeURIComponent(videoFileName)}&contentType=${encodeURIComponent(videoFile.type)}`);
             if (!videoUrlResponse.ok) throw new Error('Could not get video upload URL.');
             const presignedVideoUrl = await videoUrlResponse.text();
 

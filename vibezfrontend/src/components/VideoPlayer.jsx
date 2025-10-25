@@ -92,7 +92,7 @@ export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOp
 
     return (
         <div className="w-full h-full bg-black flex flex-col relative group" onClick={togglePlay} onTouchStart={handleTouchStart} onTouchEnd={handleTouchEnd}>
-            <video ref={videoRef} key={currentVideo.id} className="w-full h-full object-cover" src={currentVideo.videoUrl} poster={currentVideo.thumbnailUrl} muted={volume === 0} playsInline />
+            <video ref={videoRef} key={currentVideo.id} className="w-full h-full object-cover" src={currentVideo.videoUrl} muted={volume === 0} playsInline />
 
             <button onClick={(e) => { e.stopPropagation(); goToPrevVideo(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -162,8 +162,8 @@ const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => (
                 <div>
                     <p className="font-bold text-gray-400">Tags</p>
                     <div className="flex flex-wrap gap-1 mt-1">
-                        {video.tags.split(',').map(tag => tag.trim()).map((tag, index) => (
-                            <span key={index} className="bg-gray-700 text-gray-200 text-xs px-2 py-0.5 rounded-full">#{tag}</span>
+                        {video.tags.map(tag => (
+                            <span key={tag.id} className="bg-gray-700 text-gray-200 text-xs px-2 py-0.5 rounded-full">#{tag.name}</span>
                         ))}
                     </div>
                 </div>

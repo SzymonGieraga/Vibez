@@ -1,12 +1,14 @@
 package com.vibez.controller;
 
 import com.vibez.model.Reel;
+import com.vibez.model.Tag;
 import com.vibez.model.User;
 import com.vibez.repository.ReelRepository;
 import com.vibez.repository.UserRepository;
 import com.vibez.service.ReelService;
 import com.vibez.service.ImageStorageService;
 import com.vibez.service.VideoStorageService;
+import com.vibez.service.TagService;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,6 +18,7 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/reels")
@@ -26,20 +29,21 @@ public class ReelController {
     private final VideoStorageService videoStorageService;
     private final ImageStorageService imageStorageService;
     private final ReelService reelService;
+    private final TagService tagService;
 
-    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService, ReelService reelService) {
+    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService, ReelService reelService, TagService tagService) {
         this.reelRepository = reelRepository;
         this.userRepository = userRepository;
         this.videoStorageService = videoStorageService;
         this.imageStorageService = imageStorageService;
         this.reelService = reelService;
+        this.tagService = tagService;
     }
 
     @GetMapping
     public List<Reel> getAllReels() {
         return reelService.getAllReelsWithTopLevelComments();
     }
-
 
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Reel> createReel(
@@ -58,11 +62,12 @@ public class ReelController {
             return ResponseEntity.badRequest().build();
         }
 
-
         String thumbnailUrl = null;
         if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
             thumbnailUrl = imageStorageService.uploadFile(thumbnailFile);
         }
+
+        Set<Tag> tagSet = tagService.findOrCreateTags(tags);
 
         Reel newReel = new Reel();
         newReel.setUser(userOptional.get());
@@ -72,7 +77,7 @@ public class ReelController {
         newReel.setAuthor(author);
         newReel.setSongTitle(songTitle);
         newReel.setGenre(genre);
-        newReel.setTags(tags);
+        newReel.setTags(tagSet);
 
         Reel savedReel = reelRepository.save(newReel);
         return ResponseEntity.ok(savedReel);

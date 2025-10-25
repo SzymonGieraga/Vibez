@@ -36,7 +36,14 @@ public class Reel {
     @JsonManagedReference
     private List<Comment> comments = new ArrayList<>();
 
-    private String tags;
+    @ManyToMany(cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(
+            name = "reel_tags",
+            joinColumns = @JoinColumn(name = "reel_id"),
+            inverseJoinColumns = @JoinColumn(name = "tag_id")
+    )
+    private Set<Tag> tags = new HashSet<>();
+
     private int likeCount = 0;
 
     @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
@@ -67,8 +74,6 @@ public class Reel {
     public void setSongTitle(String songTitle) { this.songTitle = songTitle; }
     public String getGenre() { return genre; }
     public void setGenre(String genre) { this.genre = genre; }
-    public String getTags() { return tags; }
-    public void setTags(String tags) { this.tags = tags; }
     public List<Comment> getComments() { return comments; }
     public void setComments(List<Comment> comments) { this.comments = comments; }
     public int getLikeCount() { return likeCount; }
@@ -76,6 +81,9 @@ public class Reel {
 
     public Set<Like> getLikes() { return likes; }
     public void setLikes(Set<Like> likes) { this.likes = likes; }
+
+    public Set<Tag> getTags() { return tags; }
+    public void setTags(Set<Tag> tags) { this.tags = tags; }
 
     public void incrementLikeCount() {
         this.likeCount++;
