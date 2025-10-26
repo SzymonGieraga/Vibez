@@ -10,6 +10,7 @@ import com.vibez.service.ImageStorageService;
 import com.vibez.service.VideoStorageService;
 import com.vibez.service.TagService;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +21,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+@Slf4j
 @RestController
 @RequestMapping("/api/reels")
 public class ReelController {
@@ -31,7 +33,9 @@ public class ReelController {
     private final ReelService reelService;
     private final TagService tagService;
 
-    public ReelController(ReelRepository reelRepository, UserRepository userRepository, VideoStorageService videoStorageService, ImageStorageService imageStorageService, ReelService reelService, TagService tagService) {
+    public ReelController(ReelRepository reelRepository, UserRepository userRepository,
+                          VideoStorageService videoStorageService, ImageStorageService imageStorageService,
+                          ReelService reelService, TagService tagService) {
         this.reelRepository = reelRepository;
         this.userRepository = userRepository;
         this.videoStorageService = videoStorageService;
@@ -47,7 +51,7 @@ public class ReelController {
 
     @PostMapping(consumes = "multipart/form-data")
     public ResponseEntity<Reel> createReel(
-            @RequestParam("videoFileName") String videoFileName,
+            @RequestParam("videoFile") MultipartFile videoFile,  // ZMIANA: videoFile zamiast videoFileName
             @RequestParam(value = "thumbnailFile", required = false) MultipartFile thumbnailFile,
             @RequestParam("username") String username,
             @RequestParam("description") String description,
@@ -57,21 +61,33 @@ public class ReelController {
             @RequestParam("tags") String tags
     ) throws IOException {
 
+        log.info("Creating reel for user: {}, video file: {}", username, videoFile.getOriginalFilename());
+
         Optional<User> userOptional = userRepository.findByUsername(username);
         if (userOptional.isEmpty()) {
+            log.error("User not found: {}", username);
             return ResponseEntity.badRequest().build();
         }
 
+        // Upload and convert video
+        String videoFileName = videoStorageService.uploadAndConvertVideo(videoFile);
+        String videoUrl = videoStorageService.buildPublicUrl(videoFileName);
+        log.info("Video uploaded: {}", videoUrl);
+
+        // Upload thumbnail if provided
         String thumbnailUrl = null;
         if (thumbnailFile != null && !thumbnailFile.isEmpty()) {
             thumbnailUrl = imageStorageService.uploadFile(thumbnailFile);
+            log.info("Thumbnail uploaded: {}", thumbnailUrl);
         }
 
+        // Process tags
         Set<Tag> tagSet = tagService.findOrCreateTags(tags);
 
+        // Create and save reel
         Reel newReel = new Reel();
         newReel.setUser(userOptional.get());
-        newReel.setVideoUrl(videoStorageService.buildPublicUrl(videoFileName));
+        newReel.setVideoUrl(videoUrl);
         newReel.setThumbnailUrl(thumbnailUrl);
         newReel.setDescription(description);
         newReel.setAuthor(author);
@@ -80,12 +96,9 @@ public class ReelController {
         newReel.setTags(tagSet);
 
         Reel savedReel = reelRepository.save(newReel);
+        log.info("Reel created successfully with ID: {}", savedReel.getId());
+
         return ResponseEntity.ok(savedReel);
-    }
-    @GetMapping("/generate-upload-url")
-    public ResponseEntity<String> generateUploadUrl(@RequestParam String fileName, @RequestParam String contentType) {
-        String uploadUrl = videoStorageService.generatePresignedUrl(fileName, contentType);
-        return ResponseEntity.ok(uploadUrl);
     }
 
     @GetMapping("/user/{username:.+}")
@@ -108,6 +121,7 @@ public class ReelController {
             return ResponseEntity.notFound().build();
         }
     }
+
     @PostMapping("/{reelId}/like")
     public ResponseEntity<Reel> likeReel(@PathVariable Long reelId, @RequestParam String username) {
         try {
@@ -128,4 +142,3 @@ public class ReelController {
         }
     }
 }
-

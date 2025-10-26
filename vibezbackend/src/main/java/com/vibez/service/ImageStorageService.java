@@ -7,9 +7,9 @@ import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.*;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
@@ -71,16 +71,43 @@ public class ImageStorageService {
     }
 
     public String uploadFile(MultipartFile file) throws IOException {
-        String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+        byte[] imageBytes = convertToJpg(file);
+        String originalFileName = file.getOriginalFilename();
+        String baseFileName = originalFileName != null ?
+                originalFileName.substring(0, originalFileName.lastIndexOf('.')) :
+                "image";
+        String fileName = System.currentTimeMillis() + "_" + baseFileName + ".jpg";
 
         BlobId blobId = BlobId.of(bucketName, fileName);
         BlobInfo blobInfo = BlobInfo.newBuilder(blobId)
-                .setContentType(file.getContentType())
+                .setContentType("image/jpeg")
                 .build();
 
-        storage.create(blobInfo, file.getBytes());
+        storage.create(blobInfo, imageBytes);
 
         return buildPublicUrl(fileName);
+    }
+
+    private byte[] convertToJpg(MultipartFile file) throws IOException {
+        BufferedImage image = ImageIO.read(file.getInputStream());
+
+        if (image == null) {
+            throw new IOException("Nie można odczytać pliku obrazu");
+        }
+
+        BufferedImage rgbImage = new BufferedImage(
+                image.getWidth(),
+                image.getHeight(),
+                BufferedImage.TYPE_INT_RGB
+        );
+
+        rgbImage.createGraphics().drawImage(image, 0, 0,
+                java.awt.Color.WHITE, null);
+
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(rgbImage, "jpg", outputStream);
+
+        return outputStream.toByteArray();
     }
 
     public String buildPublicUrl(String fileName) {

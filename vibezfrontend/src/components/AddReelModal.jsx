@@ -31,8 +31,15 @@ const FileInput = ({ label, accept, onFileChange, required = false }) => (
 export default function AddReelModal({ user, onClose, onReelAdded }) {
     const [videoFile, setVideoFile] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
-    const [formData, setFormData] = useState({ description: '', author: '', songTitle: '', genre: '', tags: '' });
+    const [formData, setFormData] = useState({
+        description: '',
+        author: '',
+        songTitle: '',
+        genre: '',
+        tags: ''
+    });
     const [uploading, setUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState('');
     const [error, setError] = useState('');
 
     const handleInputChange = (e) => {
@@ -42,20 +49,18 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!videoFile) { setError('Please select a video file.'); return; }
+        if (!videoFile) {
+            setError('Please select a video file.');
+            return;
+        }
+
         setUploading(true);
         setError('');
+        setUploadProgress('Uploading and converting video...');
 
         try {
-            const videoFileName = `${Date.now()}_${videoFile.name}`;
-            const videoUrlResponse = await fetch(`http://localhost:8080/api/reels/generate-upload-url?fileName=${encodeURIComponent(videoFileName)}&contentType=${encodeURIComponent(videoFile.type)}`);
-            if (!videoUrlResponse.ok) throw new Error('Could not get video upload URL.');
-            const presignedVideoUrl = await videoUrlResponse.text();
-
-            await fetch(presignedVideoUrl, { method: 'PUT', body: videoFile, headers: { 'Content-Type': videoFile.type } });
-
             const formDataToSend = new FormData();
-            formDataToSend.append('videoFileName', videoFileName);
+            formDataToSend.append('videoFile', videoFile);
             if (thumbnailFile) {
                 formDataToSend.append('thumbnailFile', thumbnailFile);
             }
@@ -76,34 +81,159 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                 throw new Error(`Failed to save reel: ${errorText}`);
             }
 
-            onReelAdded();
-            onClose();
+            setUploadProgress('Reel published successfully!');
+            setTimeout(() => {
+                onReelAdded();
+                onClose();
+            }, 1000);
         } catch (err) {
             setError(err.message);
-            console.error("Błąd podczas dodawania rolki:", err);
+            console.error("Error adding reel:", err);
         } finally {
             setUploading(false);
         }
     };
 
-
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
+            <style>{`
+                @keyframes pulse-glow {
+                    0%, 100% {
+                        opacity: 1;
+                        box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
+                    }
+                    50% {
+                        opacity: 0.7;
+                        box-shadow: 0 0 30px rgba(59, 130, 246, 0.8);
+                    }
+                }
+                
+                @keyframes shimmer {
+                    0% {
+                        background-position: -200% center;
+                    }
+                    100% {
+                        background-position: 200% center;
+                    }
+                }
+                
+                .processing-box {
+                    animation: pulse-glow 2s ease-in-out infinite;
+                    background: linear-gradient(
+                        90deg,
+                        rgba(59, 130, 246, 0.1) 0%,
+                        rgba(59, 130, 246, 0.2) 50%,
+                        rgba(59, 130, 246, 0.1) 100%
+                    );
+                    background-size: 200% 100%;
+                    animation: shimmer 3s ease-in-out infinite, pulse-glow 2s ease-in-out infinite;
+                }
+                
+                @keyframes dots {
+                    0%, 20% { content: '.'; }
+                    40% { content: '..'; }
+                    60%, 100% { content: '...'; }
+                }
+                
+                .loading-dots::after {
+                    content: '...';
+                    animation: dots 1.5s steps(1) infinite;
+                }
+            `}</style>
+
             <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-bold mb-6">Add New Reel</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <FormInput label="Song Title" name="songTitle" value={formData.songTitle} onChange={handleInputChange} required />
-                    <FormInput label="Author" name="author" value={formData.author} onChange={handleInputChange} required />
-                    <FormInput label="Genre" name="genre" value={formData.genre} onChange={handleInputChange} />
-                    <FormInput label="Tags (comma separated)" name="tags" value={formData.tags} onChange={handleInputChange} placeholder="e.g. rock, chill, 80s" />
-                    <div><label className="block text-sm font-medium text-gray-400">Description</label><textarea name="description" value={formData.description} onChange={handleInputChange} required rows="3" className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500" /></div>
-                    <FileInput label="Video File" accept="video/*" onFileChange={setVideoFile} required />
-                    <FileInput label="Thumbnail (optional)" accept="image/*" onFileChange={setThumbnailFile} />
-                    {error && <p className="text-red-500 text-sm">{error}</p>}
-                    <div className="flex justify-end pt-4"><button type="button" onClick={onClose} disabled={uploading} className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white">Cancel</button><button type="submit" disabled={uploading} className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500">{uploading ? 'Uploading...' : 'Publish'}</button></div>
+                    <FormInput
+                        label="Song Title"
+                        name="songTitle"
+                        value={formData.songTitle}
+                        onChange={handleInputChange}
+                        required
+                    />
+                    <FormInput
+                        label="Author"
+                        name="author"
+                        value={formData.author}
+                        onChange={handleInputChange}
+                        required
+                    />
+                    <FormInput
+                        label="Genre"
+                        name="genre"
+                        value={formData.genre}
+                        onChange={handleInputChange}
+                    />
+                    <FormInput
+                        label="Tags (comma separated)"
+                        name="tags"
+                        value={formData.tags}
+                        onChange={handleInputChange}
+                        placeholder="e.g. rock, chill, 80s"
+                    />
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400">Description</label>
+                        <textarea
+                            name="description"
+                            value={formData.description}
+                            onChange={handleInputChange}
+                            required
+                            rows="3"
+                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
+                    </div>
+                    <FileInput
+                        label="Video File (will be converted to MP4)"
+                        accept="video/*"
+                        onFileChange={setVideoFile}
+                        required
+                    />
+                    <FileInput
+                        label="Thumbnail (optional)"
+                        accept="image/*"
+                        onFileChange={setThumbnailFile}
+                    />
+
+                    {uploadProgress && (
+                        <div className="processing-box border border-blue-500 text-blue-100 p-4 rounded-lg">
+                            <div className="flex items-center justify-center space-x-2">
+                                <svg className="animate-spin h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span className="font-medium loading-dots">{uploadProgress}</span>
+                            </div>
+                            <p className="text-xs text-blue-300 text-center mt-3 animate-pulse">
+                                ⏳ This may take a few minutes depending on video size
+                            </p>
+                        </div>
+                    )}
+
+                    {error && (
+                        <div className="bg-red-900 border border-red-700 text-red-200 p-3 rounded-lg text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    <div className="flex justify-end pt-4">
+                        <button
+                            type="button"
+                            onClick={onClose}
+                            disabled={uploading}
+                            className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={uploading}
+                            className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500 disabled:cursor-not-allowed transition-all"
+                        >
+                            {uploading ? 'Processing...' : 'Publish'}
+                        </button>
+                    </div>
                 </form>
             </div>
         </div>
     );
 }
-
