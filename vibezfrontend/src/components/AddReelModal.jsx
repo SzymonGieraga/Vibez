@@ -91,6 +91,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
             console.error("Error adding reel:", err);
         } finally {
             setUploading(false);
+            setUploadProgress('');
         }
     };
 
