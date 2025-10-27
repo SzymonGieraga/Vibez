@@ -1,14 +1,144 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 
-// Komponenty Ikon
 const EditIcon = () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>;
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
 const HomeIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> );
 const ProfileIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> );
 const PopularIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> );
 const SettingsIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
+
+const ReelPreview = ({ reel }) => {
+    const [isHovering, setIsHovering] = useState(false);
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewData, setPreviewData] = useState(null);
+    const [currentFrame, setCurrentFrame] = useState(0);
+    const [isLoading, setIsLoading] = useState(false);
+    const hoverTimerRef = useRef(null);
+    const frameIntervalRef = useRef(null);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        if (isHovering) {
+            hoverTimerRef.current = setTimeout(async () => {
+                setIsLoading(true);
+                try {
+                    const response = await fetch(`http://localhost:8080/api/reels/${reel.id}/preview`);
+                    if (response.ok) {
+                        const preview = await response.json();
+                        if (preview.frameUrls && preview.frameUrls.length > 0) {
+                            setPreviewData(preview);
+                            setShowPreview(true);
+                            startFrameAnimation(preview.frameUrls.length);
+                            loadAudio();
+                        }
+                    }
+                } catch (error) {
+                    console.error('Failed to load preview:', error);
+                } finally {
+                    setIsLoading(false);
+                }
+            }, 3000);
+        } else {
+            if (hoverTimerRef.current) {
+                clearTimeout(hoverTimerRef.current);
+            }
+            stopPreview();
+        }
+
+        return () => {
+            if (hoverTimerRef.current) {
+                clearTimeout(hoverTimerRef.current);
+            }
+            stopPreview();
+        };
+    }, [isHovering, reel.id]);
+
+    const startFrameAnimation = (frameCount) => {
+        setCurrentFrame(0);
+        frameIntervalRef.current = setInterval(() => {
+            setCurrentFrame(prev => (prev + 1) % frameCount);
+        }, 500);
+    };
+
+    const stopPreview = () => {
+        setShowPreview(false);
+        setCurrentFrame(0);
+        setPreviewData(null);
+        setIsLoading(false);
+
+        if (frameIntervalRef.current) {
+            clearInterval(frameIntervalRef.current);
+        }
+
+        if (audioRef.current) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+        }
+    };
+
+    const loadAudio = () => {
+        if (audioRef.current) {
+            audioRef.current.volume = 0.5;
+            audioRef.current.play().catch(err => {
+                console.log('Audio autoplay prevented:', err);
+            });
+        }
+    };
+
+    return (
+        <div
+            className="aspect-w-9 aspect-h-16 bg-gray-900 group relative overflow-hidden cursor-pointer"
+            onMouseEnter={() => setIsHovering(true)}
+            onMouseLeave={() => setIsHovering(false)}
+        >
+            <img
+                src={reel.thumbnailUrl || 'https://placehold.co/360x640/1a1a1a/ffffff?text=No+Thumbnail'}
+                alt={reel.description}
+                className={`w-full h-full object-cover transition-opacity duration-300 ${
+                    showPreview ? 'opacity-0' : 'opacity-100'
+                }`}
+            />
+
+            {showPreview && previewData && previewData.frameUrls && (
+                <>
+                    <img
+                        src={previewData.frameUrls[currentFrame]}
+                        alt="Preview"
+                        className="absolute inset-0 w-full h-full object-cover"
+                    />
+                    <audio ref={audioRef} src={reel.videoUrl} loop />
+
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        {currentFrame + 1}/{previewData.frameUrls.length}
+                    </div>
+                </>
+            )}
+
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
+                <p className="text-white text-sm font-bold text-center">{reel.songTitle}</p>
+            </div>
+
+            {(isHovering && !showPreview) && (
+                <div className="absolute bottom-2 right-2">
+                    <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+            )}
+
+            {showPreview && (
+                <div className="absolute top-2 right-2">
+                    <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                    </svg>
+                </div>
+            )}
+        </div>
+    );
+};
 
 export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) {
     const { username } = useParams();
@@ -80,14 +210,15 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                     <div className="border-t border-gray-800 pt-6">
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                             {reels.map(reel => (
-                                <div key={reel.id} className="aspect-w-9 aspect-h-16 bg-gray-900 group relative">
-                                    <img src={reel.thumbnailUrl || 'https://placehold.co/360x640/1a1a1a/ffffff?text=No+Thumbnail'} alt={reel.description} className="w-full h-full object-cover" />
-                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
-                                        <p className="text-white text-sm font-bold text-center">{reel.songTitle}</p>
-                                    </div>
-                                </div>
+                                <ReelPreview key={reel.id} reel={reel} />
                             ))}
                         </div>
+
+                        {reels.length === 0 && (
+                            <div className="text-center py-12 text-gray-500">
+                                <p>No reels yet</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </main>
@@ -143,7 +274,6 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
         setError('');
 
         try {
-            // Create FormData with all profile information
             const formData = new FormData();
             formData.append('username', newUsername);
             formData.append('bio', bio);
@@ -152,11 +282,9 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
                 formData.append('profilePicture', profilePicFile);
             }
 
-            // Send everything to backend in one request
             const updateRes = await fetch(`http://localhost:8080/api/users/${user.username}`, {
                 method: 'PUT',
                 body: formData
-                // Don't set Content-Type header - let browser set it with boundary
             });
 
             if (updateRes.status === 409) {
