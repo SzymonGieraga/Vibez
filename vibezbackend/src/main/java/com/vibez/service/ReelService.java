@@ -1,12 +1,7 @@
 package com.vibez.service;
 
-import com.vibez.model.Like;
-import com.vibez.model.Reel;
-import com.vibez.model.User;
-import com.vibez.model.Comment;
-import com.vibez.repository.LikeRepository;
-import com.vibez.repository.ReelRepository;
-import com.vibez.repository.UserRepository;
+import com.vibez.model.*;
+import com.vibez.repository.*;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -21,11 +16,13 @@ public class ReelService {
     private final ReelRepository reelRepository;
     private final UserRepository userRepository;
     private final LikeRepository likeRepository;
+    private final PlaylistReelRepository playlistReelRepository;
 
-    public ReelService(ReelRepository reelRepository, UserRepository userRepository, LikeRepository likeRepository) {
+    public ReelService(ReelRepository reelRepository, UserRepository userRepository, LikeRepository likeRepository, PlaylistReelRepository playlistReelRepository) {
         this.reelRepository = reelRepository;
         this.userRepository = userRepository;
         this.likeRepository = likeRepository;
+        this.playlistReelRepository = playlistReelRepository;
     }
 
     @Transactional
@@ -116,5 +113,25 @@ public class ReelService {
         });
 
         return reels;
+    }
+    @Transactional(readOnly = true)
+    public List<String> getPlaylistsForReel(Long reelId, String requestingUsername) {
+        Reel reel = reelRepository.findById(reelId)
+                .orElseThrow(() -> new EntityNotFoundException("Reel not found: " + reelId));
+
+        User requestingUser = userRepository.findByUsername(requestingUsername)
+                .orElse(null);
+
+        List<PlaylistReel> entries = playlistReelRepository.findByReel(reel);
+
+        return entries.stream()
+                .map(PlaylistReel::getPlaylist)
+                .filter(playlist -> {
+                    if (playlist.isPublic()) return true;
+                    return requestingUser != null && playlist.getOwner().equals(requestingUser);
+                })
+                .map(Playlist::getName)
+                .distinct()
+                .collect(Collectors.toList());
     }
 }

@@ -9,6 +9,18 @@ const ProfileIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="current
 const PopularIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg> );
 const SettingsIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg> );
 
+const GridIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+    </svg>
+);
+
+const HeartIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+    </svg>
+);
+
 const ReelPreview = ({ reel }) => {
     const [isHovering, setIsHovering] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
@@ -211,7 +223,10 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
     const { username } = useParams();
     const [profile, setProfile] = useState(null);
     const [reels, setReels] = useState([]);
+    const [likedReels, setLikedReels] = useState([]);
+    const [activeTab, setActiveTab] = useState('reels'); // 'reels' | 'liked'
     const [isLoading, setIsLoading] = useState(true);
+    const [isLoadingLiked, setIsLoadingLiked] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
@@ -245,6 +260,29 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
         fetchProfileData();
     }, [username]);
 
+    useEffect(() => {
+        if (activeTab === 'liked' && likedReels.length === 0) {
+            fetchLikedReels();
+        }
+    }, [activeTab]);
+
+    const fetchLikedReels = async () => {
+        setIsLoadingLiked(true);
+        try {
+            const response = await fetch(`http://localhost:8080/api/reels/liked/${username}`);
+            if (response.ok) {
+                const data = await response.json();
+                setLikedReels(data);
+            }
+        } catch (error) {
+            console.error("Error fetching liked reels:", error);
+        } finally {
+            setIsLoadingLiked(false);
+        }
+    };
+
+    const displayedReels = activeTab === 'reels' ? reels : likedReels;
+
     if (isLoading) {
         return <div className="bg-black text-white flex items-center justify-center h-screen">Loading Profile...</div>;
     }
@@ -263,27 +301,87 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                             alt="Profile"
                             className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover border-2 border-gray-700"
                         />
-                        <div className="text-center sm:text-left">
+                        <div className="text-center sm:text-left flex-1">
                             <h1 className="text-2xl sm:text-3xl font-bold">{profile.username}</h1>
                             <p className="text-gray-400 mt-2 max-w-md">{profile.bio || "No bio yet."}</p>
+
+                            {/* Stats */}
+                            <div className="flex gap-6 mt-4 justify-center sm:justify-start text-sm">
+                                <div>
+                                    <span className="font-bold">{reels.length}</span>
+                                    <span className="text-gray-400 ml-1">reels</span>
+                                </div>
+                            </div>
+
                             {isOwnProfile && (
-                                <button onClick={() => setIsEditModalOpen(true)} className="mt-4 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center mx-auto sm:mx-0">
+                                <button
+                                    onClick={() => setIsEditModalOpen(true)}
+                                    className="mt-4 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center mx-auto sm:mx-0"
+                                >
                                     <EditIcon /> Edit Profile
                                 </button>
                             )}
                         </div>
                     </header>
 
-                    <div className="border-t border-gray-800 pt-6">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
-                            {reels.map(reel => (
-                                <ReelPreview key={reel.id} reel={reel} />
-                            ))}
-                        </div>
+                    {/* Tabs */}
+                    <div className="border-t border-gray-800">
+                        <div className="flex justify-center gap-12 -mb-px">
+                            <button
+                                onClick={() => setActiveTab('reels')}
+                                className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
+                                    activeTab === 'reels'
+                                        ? 'border-white text-white'
+                                        : 'border-transparent text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                <GridIcon />
+                                <span className="text-xs font-semibold uppercase tracking-wider">Reels</span>
+                            </button>
 
-                        {reels.length === 0 && (
+                            <button
+                                onClick={() => setActiveTab('liked')}
+                                className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
+                                    activeTab === 'liked'
+                                        ? 'border-white text-white'
+                                        : 'border-transparent text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                <HeartIcon />
+                                <span className="text-xs font-semibold uppercase tracking-wider">Liked</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Content */}
+                    <div className="pt-6">
+                        {(activeTab === 'liked' && isLoadingLiked) ? (
                             <div className="text-center py-12 text-gray-500">
-                                <p>No reels yet</p>
+                                <svg className="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <p>Loading...</p>
+                            </div>
+                        ) : displayedReels.length > 0 ? (
+                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                                {displayedReels.map(reel => (
+                                    <ReelPreview key={reel.id} reel={reel} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-12 text-gray-500">
+                                <div className="mb-4">
+                                    {activeTab === 'reels' ? <GridIcon /> : <HeartIcon />}
+                                </div>
+                                <p className="text-lg font-semibold mb-1">
+                                    {activeTab === 'reels' ? 'No reels yet' : 'No liked reels'}
+                                </p>
+                                <p className="text-sm">
+                                    {activeTab === 'reels'
+                                        ? 'Start sharing your music!'
+                                        : 'Reels you like will appear here'}
+                                </p>
                             </div>
                         )}
                     </div>

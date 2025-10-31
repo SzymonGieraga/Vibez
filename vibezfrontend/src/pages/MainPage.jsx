@@ -5,6 +5,7 @@ import NavigationPanel from '../components/NavigationPanel.jsx';
 import AddReelModal from '../components/AddReelModal.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import CommentsPanel from '../components/CommentsPanel.jsx';
+import AddToPlaylistModal from '../components/AddToPlaylistModal.jsx';
 
 const PlusIcon = () => ( <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg> );
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
@@ -21,6 +22,8 @@ export default function MainPage({ user, auth, appUser }) {
     const [isCommentsOpen, setIsCommentsOpen] = useState(false);
     const [likedReelIds, setLikedReelIds] = useState(new Set());
     const [isTogglingLike, setIsTogglingLike] = useState(false);
+    const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+    const [selectedReelForPlaylist, setSelectedReelForPlaylist] = useState(null);
 
     const fetchVideos = async (resetIndex = true) => {
         try {
@@ -89,6 +92,16 @@ export default function MainPage({ user, auth, appUser }) {
         }
     };
 
+    const handleOpenPlaylistModal = (reel) => {
+        setSelectedReelForPlaylist(reel);
+        setIsPlaylistModalOpen(true);
+    };
+
+    const handleClosePlaylistModal = () => {
+        setIsPlaylistModalOpen(false);
+        setSelectedReelForPlaylist(null);
+    };
+
     return (
         <div className="w-screen h-screen bg-black text-white relative overflow-hidden">
             <main className="w-full h-full">
@@ -103,6 +116,7 @@ export default function MainPage({ user, auth, appUser }) {
                     likedReelIds={likedReelIds}
                     onLikeToggle={handleLikeToggle}
                     isTogglingLike={isTogglingLike}
+                    onOpenPlaylistModal={handleOpenPlaylistModal}
                 />
             </main>
 
@@ -131,6 +145,13 @@ export default function MainPage({ user, auth, appUser }) {
                 currentUser={appUser}
                 onCommentChange={() => fetchVideos(false)}
             />
+            {isPlaylistModalOpen && (
+                <AddToPlaylistModal
+                    reelToAdd={selectedReelForPlaylist}
+                    appUser={appUser}
+                    onClose={handleClosePlaylistModal}
+                />
+            )}
         </div>
     );
 }

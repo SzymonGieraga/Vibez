@@ -163,4 +163,16 @@ public class ReelController {
         return preview.map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+    @GetMapping("/{reelId}/playlists")
+    public ResponseEntity<List<String>> getPlaylistsForReel(
+            @PathVariable Long reelId,
+            @RequestParam String requestingUsername
+    ) {
+        try {
+            List<String> playlistNames = reelService.getPlaylistsForReel(reelId, requestingUsername);
+            return ResponseEntity.ok(playlistNames);
+        } catch (EntityNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

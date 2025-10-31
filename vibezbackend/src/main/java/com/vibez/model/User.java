@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,10 @@ public class User {
     @JsonIgnore
     private Set<CommentLike> likedComments = new HashSet<>();
 
+    @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<Playlist> playlists = new ArrayList<>();
+
 
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
@@ -55,5 +60,9 @@ public class User {
 
     public Set<CommentLike> getLikedComments() { return likedComments; }
     public void setLikedComments(Set<CommentLike> likedComments) { this.likedComments = likedComments; }
+
+    public List<Playlist> getPlaylists() { return playlists; }
+    public void setPlaylists(List<Playlist> playlists) { this.playlists = playlists; }
+
 }
 
