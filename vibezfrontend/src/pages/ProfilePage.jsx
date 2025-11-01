@@ -21,6 +21,13 @@ const HeartIcon = () => (
     </svg>
 );
 
+const PlaylistIcon = () => (
+    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+    </svg>
+);
+
+
 const ReelPreview = ({ reel }) => {
     const [isHovering, setIsHovering] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
@@ -219,16 +226,46 @@ const ReelPreview = ({ reel }) => {
     );
 };
 
+const PlaylistCard = ({ playlist, onClick }) => {
+    const thumbnailUrl = playlist.playlistReels.length > 0
+        ? playlist.playlistReels[0].reel.thumbnailUrl
+        : `https://placehold.co/400x400/1a1a1a/ffffff?text=${encodeURIComponent(playlist.name)}`;
+
+    return (
+        <div
+            onClick={onClick}
+            className="aspect-square bg-gray-900 rounded-lg overflow-hidden cursor-pointer group relative shadow-lg"
+        >
+            <img
+                src={thumbnailUrl}
+                alt={playlist.name}
+                className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-4">
+                <h3 className="font-bold text-lg text-white truncate">{playlist.name}</h3>
+                <p className="text-xs text-gray-300">
+                    {playlist.playlistReels.length} {playlist.playlistReels.length === 1 ? 'reel' : 'reels'}
+                </p>
+            </div>
+        </div>
+    );
+};
+
 export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) {
     const { username } = useParams();
     const [profile, setProfile] = useState(null);
     const [reels, setReels] = useState([]);
     const [likedReels, setLikedReels] = useState([]);
-    const [activeTab, setActiveTab] = useState('reels'); // 'reels' | 'liked'
+    const [playlists, setPlaylists] = useState([]);
+    const [activeTab, setActiveTab] = useState('reels');
     const [isLoading, setIsLoading] = useState(true);
     const [isLoadingLiked, setIsLoadingLiked] = useState(false);
+    const [isLoadingPlaylists, setIsLoadingPlaylists] = useState(false);
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [selectedPlaylist, setSelectedPlaylist] = useState(null);
+    const [isEditPlaylistModalOpen, setIsEditPlaylistModalOpen] = useState(false);
+    const [playlistToEdit, setPlaylistToEdit] = useState(null);
 
     const isOwnProfile = appUser?.username === username;
 
@@ -264,7 +301,10 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
         if (activeTab === 'liked' && likedReels.length === 0) {
             fetchLikedReels();
         }
-    }, [activeTab]);
+        if (activeTab === 'playlists' && playlists.length === 0 && appUser) {
+            fetchPlaylists();
+        }
+    }, [activeTab, appUser]);
 
     const fetchLikedReels = async () => {
         setIsLoadingLiked(true);
@@ -280,6 +320,58 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
             setIsLoadingLiked(false);
         }
     };
+
+    const fetchPlaylists = async () => {
+        if (!appUser) return;
+        setIsLoadingPlaylists(true);
+        try {
+            const response = await fetch(`http://localhost:8080/api/playlists/user/${username}?requestingUsername=${appUser.username}`);
+            if (response.ok) {
+                const data = await response.json();
+                setPlaylists(data);
+            }
+        } catch (error) {
+            console.error("Error fetching playlists:", error);
+        } finally {
+            setIsLoadingPlaylists(false);
+        }
+    };
+
+    const handlePlaylistUpdate = (updatedPlaylist) => {
+        setPlaylists(prevPlaylists =>
+            prevPlaylists.map(p => {
+                if (p.id === updatedPlaylist.id) {
+                    return {
+                        ...p,
+                        name: updatedPlaylist.name,
+                        description: updatedPlaylist.description,
+                        public: updatedPlaylist.public
+                    };
+                }
+                return p;
+            })
+        );
+
+        if (selectedPlaylist && selectedPlaylist.id === updatedPlaylist.id) {
+            setSelectedPlaylist(prevSelected => ({
+                ...prevSelected,
+                name: updatedPlaylist.name,
+                description: updatedPlaylist.description,
+                public: updatedPlaylist.public
+            }));
+        }
+
+        setIsEditPlaylistModalOpen(false);
+        setPlaylistToEdit(null);
+    };
+
+    const handlePlaylistDelete = (deletedPlaylistId) => {
+        setPlaylists(prev => prev.filter(p => p.id !== deletedPlaylistId));
+        setSelectedPlaylist(null); // Wróć do listy playlist
+        setIsEditPlaylistModalOpen(false);
+        setPlaylistToEdit(null);
+    };
+
 
     const displayedReels = activeTab === 'reels' ? reels : likedReels;
 
@@ -324,11 +416,10 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                         </div>
                     </header>
 
-                    {/* Tabs */}
                     <div className="border-t border-gray-800">
                         <div className="flex justify-center gap-12 -mb-px">
                             <button
-                                onClick={() => setActiveTab('reels')}
+                                onClick={() => { setActiveTab('reels'); setSelectedPlaylist(null); }}
                                 className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
                                     activeTab === 'reels'
                                         ? 'border-white text-white'
@@ -340,7 +431,7 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                             </button>
 
                             <button
-                                onClick={() => setActiveTab('liked')}
+                                onClick={() => { setActiveTab('liked'); setSelectedPlaylist(null); }}
                                 className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
                                     activeTab === 'liked'
                                         ? 'border-white text-white'
@@ -350,40 +441,135 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                                 <HeartIcon />
                                 <span className="text-xs font-semibold uppercase tracking-wider">Liked</span>
                             </button>
+
+                            <button
+                                onClick={() => { setActiveTab('playlists'); setSelectedPlaylist(null); }}
+                                className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
+                                    activeTab === 'playlists'
+                                        ? 'border-white text-white'
+                                        : 'border-transparent text-gray-500 hover:text-gray-300'
+                                }`}
+                            >
+                                <PlaylistIcon />
+                                <span className="text-xs font-semibold uppercase tracking-wider">Playlists</span>
+                            </button>
                         </div>
                     </div>
 
-                    {/* Content */}
                     <div className="pt-6">
-                        {(activeTab === 'liked' && isLoadingLiked) ? (
-                            <div className="text-center py-12 text-gray-500">
-                                <svg className="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <p>Loading...</p>
-                            </div>
-                        ) : displayedReels.length > 0 ? (
-                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
-                                {displayedReels.map(reel => (
-                                    <ReelPreview key={reel.id} reel={reel} />
-                                ))}
-                            </div>
-                        ) : (
-                            <div className="text-center py-12 text-gray-500">
-                                <div className="mb-4">
-                                    {activeTab === 'reels' ? <GridIcon /> : <HeartIcon />}
+                        {activeTab === 'reels' && (
+                            displayedReels.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                                    {displayedReels.map(reel => (
+                                        <ReelPreview key={reel.id} reel={reel} />
+                                    ))}
                                 </div>
-                                <p className="text-lg font-semibold mb-1">
-                                    {activeTab === 'reels' ? 'No reels yet' : 'No liked reels'}
-                                </p>
-                                <p className="text-sm">
-                                    {activeTab === 'reels'
-                                        ? 'Start sharing your music!'
-                                        : 'Reels you like will appear here'}
-                                </p>
-                            </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">
+                                    <div className="mb-4"><GridIcon /></div>
+                                    <p className="text-lg font-semibold mb-1">No reels yet</p>
+                                    <p className="text-sm">Start sharing your music!</p>
+                                </div>
+                            )
                         )}
+
+                        {/* Zakładka Liked */}
+                        {activeTab === 'liked' && (
+                            isLoadingLiked ? (
+                                <div className="text-center py-12 text-gray-500">
+                                    <svg className="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <p>Loading...</p>
+                                </div>
+                            ) : displayedReels.length > 0 ? (
+                                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                                    {displayedReels.map(reel => (
+                                        <ReelPreview key={reel.id} reel={reel} />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="text-center py-12 text-gray-500">
+                                    <div className="mb-4"><HeartIcon /></div>
+                                    <p className="text-lg font-semibold mb-1">No liked reels</p>
+                                    <p className="text-sm">Reels you like will appear here</p>
+                                </div>
+                            )
+                        )}
+
+                        {activeTab === 'playlists' && (
+                            <>
+                                {isLoadingPlaylists ? (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <svg className="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <p>Loading playlists...</p>
+                                    </div>
+                                ) : selectedPlaylist ? (
+                                    <div>
+                                        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+                                            <div>
+                                                <button
+                                                    onClick={() => setSelectedPlaylist(null)}
+                                                    className="text-sm text-gray-400 hover:text-white mb-2"
+                                                >
+                                                    &larr; Back to Playlists
+                                                </button>
+                                                <h2 className="text-3xl font-bold">{selectedPlaylist.name}</h2>
+                                                <p className="text-gray-400 text-sm mt-1">{selectedPlaylist.description || "No description."}</p>
+                                            </div>
+                                            {isOwnProfile && (
+                                                <div className="flex-shrink-0">
+                                                    <button
+                                                        onClick={() => {
+                                                            setPlaylistToEdit(selectedPlaylist);
+                                                            setIsEditPlaylistModalOpen(true);
+                                                        }}
+                                                        className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center"
+                                                    >
+                                                        <EditIcon /> Edit Playlist
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {selectedPlaylist.playlistReels.length > 0 ? (
+                                            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
+                                                {selectedPlaylist.playlistReels
+                                                    .map(pr => (
+                                                        <ReelPreview key={pr.reel.id} reel={pr.reel} />
+                                                    ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-12 text-gray-500">
+                                                <p className="text-lg font-semibold">This playlist is empty.</p>
+                                                <p className="text-sm">Add some reels to see them here.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : playlists.length > 0 ? (
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                                        {playlists.map(playlist => (
+                                            <PlaylistCard
+                                                key={playlist.id}
+                                                playlist={playlist}
+                                                onClick={() => setSelectedPlaylist(playlist)}
+                                            />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12 text-gray-500">
+                                        <div className="mb-4 mx-auto w-6 h-6"><PlaylistIcon /></div>
+                                        <p className="text-lg font-semibold mb-1">No playlists yet</p>
+                                        <p className="text-sm">Playlists you create will appear here.</p>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
                     </div>
                 </div>
             </main>
@@ -412,6 +598,19 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
             {isNavOpen && <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setIsNavOpen(false)} />}
 
             {isEditModalOpen && <EditProfileModal user={profile} onClose={() => setIsEditModalOpen(false)} onProfileUpdate={setAppUser} />}
+
+            {isEditPlaylistModalOpen && playlistToEdit && appUser && (
+                <EditPlaylistModal
+                    playlist={playlistToEdit}
+                    user={appUser}
+                    onClose={() => {
+                        setIsEditPlaylistModalOpen(false);
+                        setPlaylistToEdit(null);
+                    }}
+                    onUpdate={handlePlaylistUpdate}
+                    onDelete={handlePlaylistDelete}
+                />
+            )}
         </div>
     );
 }
@@ -525,6 +724,136 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
                         >
                             {isUploading ? 'Saving...' : 'Save'}
                         </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+}
+
+// --- NOWY MODAL EDYCJI PLAYLISTY ---
+function EditPlaylistModal({ playlist, user, onClose, onUpdate, onDelete }) {
+    const [name, setName] = useState(playlist.name);
+    const [description, setDescription] = useState(playlist.description || '');
+    const [isPublic, setIsPublic] = useState(playlist.public);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setIsLoading(true);
+        setError('');
+        try {
+            const params = new URLSearchParams({
+                username: user.username,
+                name: name,
+                description: description,
+                isPublic: isPublic
+            });
+            const res = await fetch(`http://localhost:8080/api/playlists/${playlist.id}?${params.toString()}`, {
+                method: 'PUT'
+            });
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Failed to update playlist');
+            }
+            const updatedPlaylist = await res.json();
+            onUpdate(updatedPlaylist);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDelete = async () => {
+        if (!window.confirm(`Are you sure you want to delete "${playlist.name}"? This cannot be undone.`)) {
+            return;
+        }
+        setIsLoading(true);
+        setError('');
+        try {
+            const params = new URLSearchParams({ username: user.username });
+            const res = await fetch(`http://localhost:8080/api/playlists/${playlist.id}?${params.toString()}`, {
+                method: 'DELETE'
+            });
+            if (!res.ok) {
+                const errData = await res.json();
+                throw new Error(errData.message || 'Failed to delete playlist');
+            }
+            onDelete(playlist.id);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
+            <div className="bg-gray-900 border border-gray-700 p-8 rounded-lg shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+                <h2 className="text-xl font-bold mb-6">Edit Playlist</h2>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400">Name</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            required
+                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-400">Description</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            rows="3"
+                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                        />
+                    </div>
+                    <div className="flex items-center">
+                        <input
+                            id="isPublicCheckbox"
+                            type="checkbox"
+                            checked={isPublic}
+                            onChange={(e) => setIsPublic(e.target.checked)}
+                            className="h-4 w-4 text-gray-600 border-gray-700 rounded bg-black focus:ring-gray-500"
+                        />
+                        <label htmlFor="isPublicCheckbox" className="ml-2 block text-sm text-gray-400">
+                            Public Playlist
+                        </label>
+                    </div>
+
+                    {error && <p className="text-red-500 text-sm">{error}</p>}
+
+                    <div className="flex justify-between items-center pt-4">
+                        <button
+                            type="button"
+                            onClick={handleDelete}
+                            disabled={isLoading}
+                            className="py-2 px-4 text-sm font-medium text-red-500 hover:text-red-400 disabled:text-gray-600"
+                        >
+                            {isLoading ? 'Deleting...' : 'Delete Playlist'}
+                        </button>
+                        <div className="flex justify-end">
+                            <button
+                                type="button"
+                                onClick={onClose}
+                                disabled={isLoading}
+                                className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                type="submit"
+                                disabled={isLoading}
+                                className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500"
+                            >
+                                {isLoading ? 'Saving...' : 'Save'}
+                            </button>
+                        </div>
                     </div>
                 </form>
             </div>

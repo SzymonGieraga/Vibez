@@ -8,7 +8,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 @Slf4j
@@ -98,5 +100,21 @@ public class PlaylistController {
     public ResponseEntity<Set<Long>> getSavedReelIds(@PathVariable String username) {
         Set<Long> reelIds = playlistService.getSavedReelIds(username);
         return ResponseEntity.ok(reelIds);
+    }
+    @GetMapping("/check-reel/{reelId}")
+    public ResponseEntity<Map<Long, Boolean>> checkReelInPlaylists(
+            @PathVariable Long reelId,
+            @RequestParam String username
+    ) {
+        List<Playlist> playlists = playlistService.getUserPlaylists(username, username);
+
+        Map<Long, Boolean> result = new HashMap<>();
+        for (Playlist playlist : playlists) {
+            boolean contains = playlist.getPlaylistReels().stream()
+                    .anyMatch(pr -> pr.getReel().getId().equals(reelId));
+            result.put(playlist.getId(), contains);
+        }
+
+        return ResponseEntity.ok(result);
     }
 }

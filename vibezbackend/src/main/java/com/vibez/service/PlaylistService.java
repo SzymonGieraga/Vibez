@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -81,8 +82,10 @@ public class PlaylistService {
         Reel reel = reelRepository.findById(reelId)
                 .orElseThrow(() -> new EntityNotFoundException("Reel not found: " + reelId));
 
-        if (playlistReelRepository.existsByPlaylistAndReel(playlist, reel)) {
-            throw new IllegalStateException("Reel already in playlist");
+        Optional<PlaylistReel> existing = playlistReelRepository.findByPlaylistAndReel(playlist, reel);
+        if (existing.isPresent()) {
+            log.info("Reel {} already in playlist {}, returning existing", reelId, playlistId);
+            return existing.get();
         }
 
         PlaylistReel playlistReel = new PlaylistReel(playlist, reel);
@@ -112,11 +115,9 @@ public class PlaylistService {
     public List<Playlist> getUserPlaylists(String username, String requestingUsername) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
-
         if (username.equals(requestingUsername)) {
-            return playlistRepository.findByOwnerOrderByCreatedAtDesc(user);
+            return playlistRepository.findByOwnerWithReels(user);
         }
-
         return playlistRepository.findPublicPlaylistsByUsername(username);
     }
 

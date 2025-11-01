@@ -39,6 +39,8 @@ public class Playlist {
     @JsonIgnoreProperties("playlist")
     private List<PlaylistReel> playlistReels = new ArrayList<>();
 
+
+
     @Transient
     private String thumbnailUrl;
 
@@ -60,7 +62,6 @@ public class Playlist {
         this.owner = owner;
     }
 
-    // Getters & Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -96,11 +97,17 @@ public class Playlist {
         this.thumbnailUrl = thumbnailUrl;
     }
 
+    public String getOwnerUsername() {
+        return owner != null ? owner.getUsername() : null;
+    }
+
     public int getReelCount() {
         return playlistReels != null ? playlistReels.size() : 0;
     }
 
-    public String getOwnerUsername() {
-        return owner != null ? owner.getUsername() : null;
+    public boolean containsReel(Long reelId) {
+        if (playlistReels == null) return false;
+        return playlistReels.stream()
+                .anyMatch(pr -> pr.getReel() != null && pr.getReel().getId().equals(reelId));
     }
 }
