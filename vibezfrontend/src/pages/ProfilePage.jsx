@@ -227,9 +227,13 @@ const ReelPreview = ({ reel }) => {
 };
 
 const PlaylistCard = ({ playlist, onClick }) => {
-    const thumbnailUrl = playlist.playlistReels.length > 0
+    const hasReels = Array.isArray(playlist.playlistReels) && playlist.playlistReels.length > 0;
+
+    const thumbnailUrl = hasReels
         ? playlist.playlistReels[0].reel.thumbnailUrl
         : `https://placehold.co/400x400/1a1a1a/ffffff?text=${encodeURIComponent(playlist.name)}`;
+
+    const reelCount = hasReels ? playlist.playlistReels.length : 0;
 
     return (
         <div
@@ -244,7 +248,7 @@ const PlaylistCard = ({ playlist, onClick }) => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent flex flex-col justify-end p-4">
                 <h3 className="font-bold text-lg text-white truncate">{playlist.name}</h3>
                 <p className="text-xs text-gray-300">
-                    {playlist.playlistReels.length} {playlist.playlistReels.length === 1 ? 'reel' : 'reels'}
+                    {reelCount} {reelCount === 1 ? 'reel' : 'reels'}
                 </p>
             </div>
         </div>
@@ -267,15 +271,36 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
     const [isEditPlaylistModalOpen, setIsEditPlaylistModalOpen] = useState(false);
     const [playlistToEdit, setPlaylistToEdit] = useState(null);
 
+    const [followStats, setFollowStats] = useState({ followers: 0, following: 0 });
+    const [isFollowing, setIsFollowing] = useState(false);
+    const [isFollowLoading, setIsFollowLoading] = useState(false);
+
+    const [followModal, setFollowModal] = useState({
+        isOpen: false,
+        mode: 'followers',
+    });
+
     const isOwnProfile = appUser?.username === username;
+
+    const fetchFollowStats = async (profileUsername) => {
+        try {
+            const statsRes = await fetch(`http://localhost:8080/api/follows/stats/${profileUsername}`);
+            if (statsRes.ok) {
+                const statsData = await statsRes.json();
+                setFollowStats(statsData);
+            }
+        } catch (error) {
+            console.error("Error fetching follow stats:", error);
+        }
+    };
 
     useEffect(() => {
         const fetchProfileData = async () => {
             setIsLoading(true);
             try {
-                const [profileRes, reelsRes] = await Promise.all([
+                const [profileRes, reelsRes,statsRes] = await Promise.all([
                     fetch(`http://localhost:8080/api/users/${username}`),
-                    fetch(`http://localhost:8080/api/reels/user/${username}`)
+                    fetch(`http://localhost:8080/api/reels/user/${username}`),
                 ]);
 
                 if (!profileRes.ok) throw new Error(`Profile not found for ${username}`);
@@ -286,6 +311,7 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
 
                 setProfile(profileData);
                 setReels(reelsData);
+                fetchFollowStats(username);
             } catch (error) {
                 console.error("Error fetching profile data:", error);
                 setProfile(null);
@@ -296,6 +322,23 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
 
         fetchProfileData();
     }, [username]);
+
+    useEffect(() => {
+        if (!isOwnProfile && appUser && profile) {
+            const fetchFollowStatus = async () => {
+                try {
+                    const res = await fetch(`http://localhost:8080/api/follows/status?followerUsername=${appUser.username}&followingUsername=${profile.username}`);
+                    if (res.ok) {
+                        const data = await res.json();
+                        setIsFollowing(data.isFollowing);
+                    }
+                } catch (error) {
+                    console.error("Error fetching follow status:", error);
+                }
+            };
+            fetchFollowStatus();
+        }
+    }, [isOwnProfile, appUser, profile]);
 
     useEffect(() => {
         if (activeTab === 'liked' && likedReels.length === 0) {
@@ -367,9 +410,53 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
 
     const handlePlaylistDelete = (deletedPlaylistId) => {
         setPlaylists(prev => prev.filter(p => p.id !== deletedPlaylistId));
-        setSelectedPlaylist(null); // Wróć do listy playlist
+        setSelectedPlaylist(null);
         setIsEditPlaylistModalOpen(false);
         setPlaylistToEdit(null);
+    };
+
+    const handleToggleFollow = async () => {
+        if (!appUser) {
+            console.error("User not logged in");
+            return;
+        }
+        setIsFollowLoading(true);
+        try {
+            const res = await fetch(`http://localhost:8080/api/follows/toggle?followerUsername=${appUser.username}&followingUsername=${profile.username}`, {
+                method: 'POST'
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setIsFollowing(data.isFollowing);
+                fetchFollowStats(profile.username);
+            } else {
+                const errData = await res.json();
+                console.error("Failed to toggle follow:", errData.error);
+            }
+        } catch (error) {
+            console.error("Error toggling follow:", error);
+        } finally {
+            setIsFollowLoading(false);
+        }
+    };
+
+    const openFollowModal = (mode) => {
+        if (!appUser) return;
+        setFollowModal({ isOpen: true, mode: mode });
+    };
+
+    const handleModalClose = () => {
+        setFollowModal({ isOpen: false, mode: 'followers' });
+        if (isOwnProfile) {
+            fetchFollowStats(username);
+        }
+    };
+
+    const handleFollowUpdateFromModal = () => {
+        if (!isOwnProfile) {
+            fetchFollowStats(username);
+        }
     };
 
 
@@ -396,23 +483,48 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                         <div className="text-center sm:text-left flex-1">
                             <h1 className="text-2xl sm:text-3xl font-bold">{profile.username}</h1>
                             <p className="text-gray-400 mt-2 max-w-md">{profile.bio || "No bio yet."}</p>
+                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4">
 
-                            {/* Stats */}
-                            <div className="flex gap-6 mt-4 justify-center sm:justify-start text-sm">
-                                <div>
-                                    <span className="font-bold">{reels.length}</span>
-                                    <span className="text-gray-400 ml-1">reels</span>
+                                <div className="flex gap-6 justify-center sm:justify-start text-sm">
+                                    <div>
+                                        <span className="font-bold">{reels.length}</span>
+                                        <span className="text-gray-400 ml-1">reels</span>
+                                    </div>
+                                    <div onClick={() => openFollowModal('followers')} className="cursor-pointer hover:text-gray-300">
+                                        <span className="font-bold">{followStats.followers}</span>
+                                        <span className="text-gray-400 ml-1">followers</span>
+                                    </div>
+                                    <div onClick={() => openFollowModal('following')} className="cursor-pointer hover:text-gray-300">
+                                        <span className="font-bold">{followStats.following}</span>
+                                        <span className="text-gray-400 ml-1">following</span>
+                                    </div>
                                 </div>
+
+                              <div className="mt-4 sm:mt-0">
+                                    {isOwnProfile ? (
+                                        <button
+                                            onClick={() => setIsEditModalOpen(true)}
+                                            className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center mx-auto sm:mx-0"
+                                        >
+                                            <EditIcon /> Edit Profile
+                                        </button>
+                                    ) : (
+                                        <button
+                                            onClick={handleToggleFollow}
+                                            disabled={isFollowLoading || !appUser}
+                                            className={`text-sm font-semibold py-2 px-6 rounded-lg ${
+                                                isFollowing
+                                                    ? 'bg-gray-800 hover:bg-gray-700 text-white' 
+                                                    : 'bg-white hover:bg-gray-200 text-black' 
+                                            } disabled:opacity-50 mx-auto sm:mx-0 transition-colors`}
+                                        >
+                                            {isFollowLoading ? '...' : (isFollowing ? 'Following' : 'Follow')}
+                                        </button>
+                                    )}
+                                </div>
+
                             </div>
 
-                            {isOwnProfile && (
-                                <button
-                                    onClick={() => setIsEditModalOpen(true)}
-                                    className="mt-4 bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center mx-auto sm:mx-0"
-                                >
-                                    <EditIcon /> Edit Profile
-                                </button>
-                            )}
                         </div>
                     </header>
 
@@ -473,7 +585,6 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                             )
                         )}
 
-                        {/* Zakładka Liked */}
                         {activeTab === 'liked' && (
                             isLoadingLiked ? (
                                 <div className="text-center py-12 text-gray-500">
@@ -611,6 +722,15 @@ export default function ProfilePage({ auth, currentUser, appUser, setAppUser }) 
                     onDelete={handlePlaylistDelete}
                 />
             )}
+            {followModal.isOpen && appUser && (
+                <FollowListModal
+                    mode={followModal.mode}
+                    profileUsername={profile.username}
+                    currentUsername={appUser.username}
+                    onClose={handleModalClose}
+                    onFollowUpdate={handleFollowUpdateFromModal}
+                />
+            )}
         </div>
     );
 }
@@ -731,7 +851,131 @@ function EditProfileModal({ user, onClose, onProfileUpdate }) {
     );
 }
 
-// --- NOWY MODAL EDYCJI PLAYLISTY ---
+function FollowListModal({ mode, profileUsername, currentUsername, onClose, onFollowUpdate }) {
+    const [users, setUsers] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const navigate = useNavigate();
+
+    useEffect(() => {
+        const fetchUsers = async () => {
+            setIsLoading(true);
+            try {
+                const res = await fetch(`http://localhost:8080/api/follows/${profileUsername}/${mode}?currentUsername=${currentUsername}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setUsers(data);
+                }
+            } catch (error) {
+                console.error(`Error fetching ${mode}:`, error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchUsers();
+    }, [mode, profileUsername, currentUsername]);
+
+    const handleToggleFollow = async (targetUsername, index) => {
+        try {
+            const res = await fetch(`http://localhost:8080/api/follows/toggle?followerUsername=${currentUsername}&followingUsername=${targetUsername}`, {
+                method: 'POST'
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+
+                setUsers(currentUsers =>
+                    currentUsers.map((user, i) =>
+                        i === index
+                            ? { ...user, isFollowedByCurrentUser: data.isFollowing }
+                            : user
+                    )
+                );
+
+                if (targetUsername === profileUsername) {
+                    onFollowUpdate();
+                }
+
+            } else {
+                console.error("Failed to toggle follow from modal");
+            }
+        } catch (error) {
+            console.error("Error toggling follow from modal:", error);
+        }
+    };
+
+    const handleNavigate = (username) => {
+        onClose();
+        navigate(`/profile/${username}`);
+    };
+
+    return (
+        <div
+            className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50"
+            onClick={onClose}
+        >
+            <div
+                className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-sm h-[60vh] flex flex-col"
+                onClick={e => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-bold capitalize">{mode}</h2>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">&times;</button>
+                </div>
+
+                <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+                    {isLoading ? (
+                        <p className="text-gray-400 text-center">Loading...</p>
+                    ) : users.length === 0 ? (
+                        <p className="text-gray-400 text-center">No users found.</p>
+                    ) : (
+                        users.map((user, index) => (
+                            <UserListItem
+                                key={user.username}
+                                user={user}
+                                currentUsername={currentUsername}
+                                onToggleFollow={() => handleToggleFollow(user.username, index)}
+                                onNavigate={() => handleNavigate(user.username)}
+                            />
+                        ))
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+function UserListItem({ user, currentUsername, onToggleFollow, onNavigate }) {
+    const isCurrentUser = user.username === currentUsername;
+
+    return (
+        <div className="flex items-center justify-between gap-4">
+            <div
+                className="flex items-center gap-3 cursor-pointer"
+                onClick={onNavigate}
+            >
+                <img
+                    src={user.profilePictureUrl || `https://ui-avatars.com/api/?name=${user.username}&background=222&color=fff&size=40`}
+                    alt={user.username}
+                    className="w-10 h-10 rounded-full object-cover"
+                />
+                <span className="font-semibold hover:underline">{user.username}</span>
+            </div>
+
+            {!isCurrentUser && (
+                <button
+                    onClick={onToggleFollow}
+                    className={`text-sm font-semibold py-1.5 px-4 rounded-lg ${
+                        user.isFollowedByCurrentUser
+                            ? 'bg-gray-800 hover:bg-gray-700 text-white'
+                            : 'bg-white hover:bg-gray-200 text-black'
+                    } transition-colors flex-shrink-0`}
+                >
+                    {user.isFollowedByCurrentUser ? 'Following' : 'Follow'}
+                </button>
+            )}
+        </div>
+    );
+}
+
 function EditPlaylistModal({ playlist, user, onClose, onUpdate, onDelete }) {
     const [name, setName] = useState(playlist.name);
     const [description, setDescription] = useState(playlist.description || '');

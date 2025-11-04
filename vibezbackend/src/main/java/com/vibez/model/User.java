@@ -42,6 +42,14 @@ public class User {
     @JsonIgnore
     private List<Playlist> playlists = new ArrayList<>();
 
+    @OneToMany(mappedBy = "follower", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private Set<Follow> following = new HashSet<>();
+
+    @OneToMany(mappedBy = "following", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private Set<Follow> followers = new HashSet<>();
+
 
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
@@ -64,5 +72,9 @@ public class User {
     public List<Playlist> getPlaylists() { return playlists; }
     public void setPlaylists(List<Playlist> playlists) { this.playlists = playlists; }
 
+    public Set<Follow> getFollowing() { return following; }
+    public void setFollowing(Set<Follow> following) { this.following = following; }
+    public Set<Follow> getFollowers() { return followers; }
+    public void setFollowers(Set<Follow> followers) { this.followers = followers; }
 }
 
