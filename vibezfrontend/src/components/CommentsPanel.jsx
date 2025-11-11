@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
 const SmallHeartIcon = ({ isLiked, disabled }) => (
@@ -93,7 +93,7 @@ const CommentItem = ({
                         <div>
                             <p
                                 className="text-sm text-white cursor-pointer hover:bg-gray-800 rounded px-1 -mx-1 break-words"
-                                onClick={() => onCommentClick && onCommentClick(comment)}
+                                onClick={() => onCommentClick(comment)}
                             >
                                 {displayText}
                             </p>
@@ -144,7 +144,7 @@ const CommentItem = ({
                             <span className={isLiked ? 'text-red-500' : 'text-gray-500'}>{comment.likeCount}</span>
                         </button>
 
-                        {replyCount > 0 && !isReply && (
+                        {replyCount > 0 && (
                             <span className="text-gray-500">
                                 {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
                             </span>
@@ -209,8 +209,26 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
     const [togglingCommentLikes, setTogglingCommentLikes] = useState(new Set());
     const [replyingTo, setReplyingTo] = useState(null);
     const [newCommentText, setNewCommentText] = useState("");
-    const [focusedComment, setFocusedComment] = useState(null);
+
+    const [focusStackIds, setFocusStackIds] = useState([]);
+
     const textInputRef = useRef(null);
+
+    const allCommentsMap = useMemo(() => {
+        const map = new Map();
+        const traverse = (comments) => {
+            if (!comments) return;
+            for (const comment of comments) {
+                map.set(comment.id, comment);
+                traverse(comment.replies);
+            }
+        };
+        traverse(reel?.comments);
+        return map;
+    }, [reel]);
+
+    const currentFocusedCommentId = focusStackIds.length > 0 ? focusStackIds[focusStackIds.length - 1] : null;
+    const currentFocusedComment = currentFocusedCommentId ? allCommentsMap.get(currentFocusedCommentId) : null;
 
     useEffect(() => {
         if (isOpen && currentUser?.username) {
@@ -230,7 +248,9 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
 
     useEffect(() => {
         if (!isOpen) {
-            setFocusedComment(null);
+            setFocusStackIds([]);
+            setReplyingTo(null);
+            setNewCommentText("");
         }
     }, [isOpen]);
 
@@ -273,8 +293,10 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
             username: currentUser.username
         });
 
-        if (replyingTo) {
-            params.append('parentCommentId', replyingTo.id);
+        const parentId = replyingTo ? replyingTo.id : currentFocusedCommentId;
+
+        if (parentId) {
+            params.append('parentCommentId', parentId);
         }
 
         try {
@@ -305,15 +327,16 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
 
     const handleDeleteComment = async (commentId) => {
         const params = new URLSearchParams({ username: currentUser.username });
-        if (window.confirm('Are you sure you want to delete this comment?')) {
-            try {
-                await fetch(`http://localhost:8080/api/comments/${commentId}?${params.toString()}`, { method: 'DELETE' });
-                onCommentChange();
-                if (focusedComment?.id === commentId) {
-                    setFocusedComment(null);
-                }
-            } catch (error) { console.error("Error deleting comment:", error); }
-        }
+        try {
+            await fetch(`http://localhost:8080/api/comments/${commentId}?${params.toString()}`, { method: 'DELETE' });
+            onCommentChange();
+
+            setFocusStackIds(prevStack => {
+                const newStack = prevStack.filter(id => id !== commentId);
+                return newStack;
+            });
+
+        } catch (error) { console.error("Error deleting comment:", error); }
     };
 
     const handlePinComment = async (commentId) => {
@@ -330,8 +353,19 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
     };
 
     const handleCommentClick = (comment) => {
-        setFocusedComment(comment);
+        if (currentFocusedCommentId !== comment.id) {
+            setFocusStackIds(prevStack => [...prevStack, comment.id]);
+        }
     };
+
+    const handleGoBack = () => {
+        setFocusStackIds(prevStack => prevStack.slice(0, -1));
+    };
+
+    const handleGoToMain = () => {
+        setFocusStackIds([]);
+    };
+
 
     const allComments = reel?.comments || [];
     const sortedComments = [...allComments].sort((a, b) => {
@@ -339,27 +373,40 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
         return b.likeCount - a.likeCount;
     });
 
-    const displayComments = focusedComment
-        ? [focusedComment]
+    const displayComments = currentFocusedComment
+        ? [currentFocusedComment]
         : sortedComments;
+
+    const placeholderReplyTo = replyingTo ? replyingTo.user.username : (currentFocusedComment ? currentFocusedComment.user.username : null);
 
     return (
         <div className={`absolute top-0 right-0 h-full w-96 bg-black/80 backdrop-blur-md border-l border-gray-800 flex flex-col transition-transform duration-300 z-40 ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <h2 className="font-bold text-lg">
-                        {focusedComment ? 'Thread' : `Comments (${reel?.comments?.length || 0})`}
+                        {currentFocusedComment ? 'Thread' : `Comments (${reel?.comments?.length || 0})`}
                     </h2>
-                    {focusedComment && (
-                        <button
-                            onClick={() => setFocusedComment(null)}
-                            className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                            </svg>
-                            Back
-                        </button>
+                    {currentFocusedComment && (
+                        <>
+                            <button
+                                onClick={handleGoBack}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                Back
+                            </button>
+                            <button
+                                onClick={handleGoToMain}
+                                className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                                </svg>
+                                All Comments
+                            </button>
+                        </>
                     )}
                 </div>
                 <button onClick={onClose} className="text-2xl">&times;</button>
@@ -403,7 +450,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
                     type="text"
                     value={newCommentText}
                     onChange={(e) => setNewCommentText(e.target.value)}
-                    placeholder={replyingTo ? "Add a reply..." : "Add a comment..."}
+                    placeholder={placeholderReplyTo ? `Reply to @${placeholderReplyTo}...` : "Add a comment..."}
                     className="w-full bg-gray-800 border border-gray-700 rounded-full py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </form>
