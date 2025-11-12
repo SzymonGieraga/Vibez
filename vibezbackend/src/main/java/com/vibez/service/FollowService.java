@@ -6,6 +6,7 @@ import com.vibez.model.User;
 import com.vibez.repository.FollowRepository;
 import com.vibez.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,8 @@ public class FollowService {
     private FollowRepository followRepository;
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private NotificationService notificationService;
 
     @Transactional
     public boolean toggleFollow(String followerUsername, String followingUsername) {
@@ -38,6 +41,8 @@ public class FollowService {
         }else{
             Follow follow = new Follow(follower, following);
             followRepository.save(follow);
+            sendNewFollowerNotification(following, follower.getUsername());
+
             return true;
         }
     }
@@ -106,5 +111,13 @@ public class FollowService {
         return followRepository.findByFollower(user).stream()
                 .map(follow -> follow.getFollowing().getUsername())
                 .collect(Collectors.toSet());
+    }
+    @Async
+    public void sendNewFollowerNotification(User recipient, String actorUsername) {
+        String title = "Masz nowego obserwującego!";
+        String body = actorUsername + " zaczął Cię obserwować.";
+
+        String relativeUrl = "/profile/" + actorUsername;
+        notificationService.sendNotificationToUser(recipient, title, body, relativeUrl);
     }
 }

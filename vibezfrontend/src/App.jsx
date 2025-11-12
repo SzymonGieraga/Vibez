@@ -1,25 +1,14 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, onAuthStateChanged } from 'firebase/auth';
+import { onAuthStateChanged } from 'firebase/auth';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { setupNotifications } from './firebaseMessaging';
 
 import i18n from './i18n';
 import AuthPage from './pages/AuthPage';
 import MainPage from './pages/MainPage';
 import ProfilePage from './pages/ProfilePage';
-
-const firebaseConfig = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+import { auth } from './firebaseConfig';
 
 export default function AppWrapper() {
     return (
@@ -50,7 +39,9 @@ function App() {
                     });
                     if (!response.ok) throw new Error("Sync failed");
                     const appUserData = await response.json();
-                    setAppUser(appUserData); // Zapisujemy dane z naszej bazy
+                    setAppUser(appUserData);
+                    await setupNotifications();
+
                 } catch (error) {
                     console.error("User sync failed:", error);
                     setAppUser(null);
@@ -78,4 +69,3 @@ function App() {
         </Routes>
     );
 }
-

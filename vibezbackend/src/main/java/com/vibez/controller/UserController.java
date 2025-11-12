@@ -1,13 +1,16 @@
 package com.vibez.controller;
 
 import com.vibez.dto.SyncUserRequest;
-import com.vibez.dto.UpdateUserRequest;
 import com.vibez.model.User;
+import com.vibez.repository.DeviceTokenRepository;
 import com.vibez.service.ImageStorageService;
 import com.vibez.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.vibez.model.DeviceToken;
+import java.security.Principal;
 
 import org.springframework.web.multipart.MultipartFile;
 import java.net.HttpURLConnection;
@@ -21,10 +24,12 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
+    private final DeviceTokenRepository deviceTokenRepository;
 
-    public UserController(UserRepository userRepository, ImageStorageService imageStorageService) {
+    public UserController(UserRepository userRepository, ImageStorageService imageStorageService,  DeviceTokenRepository deviceTokenRepository) {
         this.userRepository = userRepository;
         this.imageStorageService = imageStorageService;
+        this.deviceTokenRepository = deviceTokenRepository;
     }
 
     @GetMapping("/generate-profile-picture-url")
@@ -112,6 +117,23 @@ public class UserController {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error updating profile: " + e.getMessage());
+        }
+    }
+    @PostMapping("/me/register-device-token")
+    public ResponseEntity<?> registerDeviceToken(@RequestBody String token, Principal principal) {
+
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        User currentUser = userRepository.findByEmail(principal.getName())
+                .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + principal.getName()));
+
+        if (deviceTokenRepository.findByToken(token).isEmpty()) {
+            DeviceToken newDeviceToken = new DeviceToken(token, currentUser);
+            deviceTokenRepository.save(newDeviceToken);
+            return ResponseEntity.ok().body("Token registered successfully");
+        } else {
+            return ResponseEntity.ok().body("Token was already registered");
         }
     }
 }

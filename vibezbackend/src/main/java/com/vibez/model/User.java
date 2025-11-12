@@ -50,6 +50,9 @@ public class User {
     @JsonIgnore
     private Set<Follow> followers = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<DeviceToken> deviceTokens = new HashSet<>();
+
 
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
@@ -76,5 +79,8 @@ public class User {
     public void setFollowing(Set<Follow> following) { this.following = following; }
     public Set<Follow> getFollowers() { return followers; }
     public void setFollowers(Set<Follow> followers) { this.followers = followers; }
+
+    public Set<DeviceToken> getDeviceTokens() {return deviceTokens;}
+    public void setDeviceTokens(Set<DeviceToken> deviceTokens) {this.deviceTokens = deviceTokens;}
 }
 
