@@ -6,8 +6,10 @@ import com.vibez.repository.DeviceTokenRepository;
 import com.vibez.service.ImageStorageService;
 import com.vibez.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.vibez.model.DeviceToken;
 import java.security.Principal;
@@ -120,20 +122,35 @@ public class UserController {
         }
     }
     @PostMapping("/me/register-device-token")
-    public ResponseEntity<?> registerDeviceToken(@RequestBody String token, Principal principal) {
+    @Transactional // Ważne dla operacji na encjach
+    public ResponseEntity<?> registerDeviceToken(
+            @AuthenticationPrincipal User user, // <-- Pobiera usera z FirebaseTokenFilter
+            @RequestBody String tokenString) { // <-- Odczytuje "text/plain" z front-endu
 
-        if (principal == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        // Zabezpieczenie (dzięki Twojemu filtrowi to powinno być OK)
+        if (user == null) {
+            return ResponseEntity.status(401).body("Brak autoryzacji");
         }
-        User currentUser = userRepository.findByEmail(principal.getName())
-                .orElseThrow(() -> new EntityNotFoundException("User not found with email: " + principal.getName()));
 
-        if (deviceTokenRepository.findByToken(token).isEmpty()) {
-            DeviceToken newDeviceToken = new DeviceToken(token, currentUser);
-            deviceTokenRepository.save(newDeviceToken);
-            return ResponseEntity.ok().body("Token registered successfully");
-        } else {
-            return ResponseEntity.ok().body("Token was already registered");
+        if (tokenString == null || tokenString.isEmpty()) {
+            return ResponseEntity.badRequest().body("Token nie może być pusty");
+        }
+
+        try {
+            // Sprawdź, czy ten token już istnieje, aby uniknąć duplikatów
+            if (deviceTokenRepository.findByToken(tokenString).isPresent()) {
+                return ResponseEntity.ok("Token już zarejestrowany");
+            }
+
+            // Utwórz i zapisz nowy token
+            DeviceToken deviceToken = new DeviceToken(tokenString, user);
+            deviceTokenRepository.save(deviceToken);
+
+            return ResponseEntity.ok("Token zarejestrowany pomyślnie");
+
+        } catch (Exception e) {
+            // Zwróć 500 z komunikatem błędu
+            return ResponseEntity.status(500).body("Błąd serwera podczas zapisywania tokena: " + e.getMessage());
         }
     }
 }

@@ -13,25 +13,24 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Bean
-    public FirebaseTokenFilter firebaseTokenFilter() {
-        return new FirebaseTokenFilter();
+    private final FirebaseTokenFilter firebaseTokenFilter;
+
+    public SecurityConfig(FirebaseTokenFilter firebaseTokenFilter) {
+        this.firebaseTokenFilter = firebaseTokenFilter;
     }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
-
                 .cors(cors -> {})
-
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                .addFilterBefore(firebaseTokenFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .authorizeHttpRequests(authz -> authz
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users/me/register-device-token").authenticated()
-
+                        .requestMatchers("/api/notifications/**").authenticated()
                         .anyRequest().permitAll()
                 );
 

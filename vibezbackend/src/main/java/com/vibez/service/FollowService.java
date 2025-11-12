@@ -5,7 +5,6 @@ import com.vibez.model.Follow;
 import com.vibez.model.User;
 import com.vibez.repository.FollowRepository;
 import com.vibez.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,12 +17,18 @@ import java.util.stream.Collectors;
 @Service
 public class FollowService {
 
-    @Autowired
-    private FollowRepository followRepository;
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private NotificationService notificationService;
+    private final FollowRepository followRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+
+    private final InAppNotificationService inAppNotificationService;
+
+    public FollowService(FollowRepository followRepository, UserRepository userRepository, NotificationService notificationService, InAppNotificationService inAppNotificationService) {
+        this.followRepository = followRepository;
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
+        this.inAppNotificationService = inAppNotificationService;
+    }
 
     @Transactional
     public boolean toggleFollow(String followerUsername, String followingUsername) {
@@ -35,13 +40,16 @@ public class FollowService {
         User following = userRepository.findByUsername(followingUsername)
                 .orElseThrow(()->new RuntimeException("Following not found"));
         Optional<Follow> existingFollow = followRepository.findByFollowerAndFollowing(follower, following);
+
         if(existingFollow.isPresent()) {
             followRepository.delete(existingFollow.get());
             return false;
         }else{
             Follow follow = new Follow(follower, following);
             followRepository.save(follow);
+
             sendNewFollowerNotification(following, follower.getUsername());
+            inAppNotificationService.createNewFollowerNotification(following, follower);
 
             return true;
         }
