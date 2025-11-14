@@ -35,7 +35,7 @@ public class InAppNotification {
     @Column
     private String relativeUrl;
 
-    @Column(nullable = false)
+    @Column(name = "is_read",nullable = false)
     private boolean isRead = false;
 
     @CreationTimestamp

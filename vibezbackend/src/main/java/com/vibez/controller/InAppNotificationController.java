@@ -1,10 +1,10 @@
 package com.vibez.controller;
 
-import com.vibez.model.InAppNotification;
+import com.vibez.dto.InAppNotificationDto;
 import com.vibez.model.User;
-import com.vibez.repository.InAppNotificationRepository;
 import com.vibez.repository.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.vibez.service.InAppNotificationService;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,34 +18,48 @@ import java.util.List;
 @RequestMapping("/api/notifications")
 public class InAppNotificationController {
 
-    @Autowired
-    private InAppNotificationRepository notificationRepository;
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final InAppNotificationService notificationService;
+
+    public InAppNotificationController(UserRepository userRepository, InAppNotificationService notificationService) {
+        this.userRepository = userRepository;
+        this.notificationService = notificationService;
+    }
+
 
     @GetMapping
-    public ResponseEntity<List<InAppNotification>> getMyNotifications(@AuthenticationPrincipal UserDetails userDetails) {
+    public ResponseEntity<List<InAppNotificationDto>> getMyNotifications(@AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = getCurrentUser(userDetails);
-        List<InAppNotification> notifications = notificationRepository.findByRecipientOrderByCreatedAtDesc(currentUser);
-        return ResponseEntity.ok(notifications);
+        List<InAppNotificationDto> notifications = notificationService.getNotificationsForUser(currentUser);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(notifications);
     }
 
     @GetMapping("/unread-count")
     public ResponseEntity<Long> getUnreadCount(@AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = getCurrentUser(userDetails);
-        long count = notificationRepository.countByRecipientAndIsReadFalse(currentUser);
-        return ResponseEntity.ok(count);
+        long count = notificationService.getUnreadCount(currentUser);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .body(count);
     }
 
     @PostMapping("/read-all")
     public ResponseEntity<Void> markAllAsRead(@AuthenticationPrincipal UserDetails userDetails) {
         User currentUser = getCurrentUser(userDetails);
-        List<InAppNotification> notifications = notificationRepository.findByRecipientOrderByCreatedAtDesc(currentUser);
-        notifications.stream()
-                .filter(n -> !n.isRead())
-                .forEach(n -> n.setRead(true));
-        notificationRepository.saveAll(notifications);
+        notificationService.markAllAsRead(currentUser);
+        return ResponseEntity.ok().build();
+    }
+
+    @PatchMapping("/{notificationId}/read")
+    public ResponseEntity<Void> markOneAsRead(
+            @PathVariable Long notificationId,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User currentUser = getCurrentUser(userDetails);
+        notificationService.markAsRead(notificationId, currentUser);
         return ResponseEntity.ok().build();
     }
 

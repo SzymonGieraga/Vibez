@@ -38,31 +38,50 @@ const NavButton = ({ icon, label, badge = false, onClick }) => (
     </li>
 );
 
-const NotificationItem = ({ notification }) => (
-    <Link
-        to={notification.relativeUrl}
-        className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-700 transition-colors"
-    >
-        {notification.actorProfilePictureUrl ? (
-            <img src={notification.actorProfilePictureUrl} alt={notification.actorUsername} className="w-9 h-9 rounded-full flex-shrink-0" />
-        ) : (
-            <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
-                <PlaceholderUserIcon />
+const NotificationItem = ({ notification, onNotificationClick }) => {
+
+    const handleClick = () => {
+        if (!notification.read) {
+            onNotificationClick(notification);
+        }
+    };
+
+    return (
+        <Link
+            to={notification.relativeUrl}
+            className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-700 transition-colors"
+            onClick={handleClick}
+        >
+            {notification.actorProfilePictureUrl ? (
+                <img src={notification.actorProfilePictureUrl} alt={notification.actorUsername} className="w-9 h-9 rounded-full flex-shrink-0" />
+            ) : (
+                <div className="w-9 h-9 rounded-full bg-gray-800 flex items-center justify-center flex-shrink-0">
+                    <PlaceholderUserIcon />
+                </div>
+            )}
+
+            <div className="text-sm overflow-hidden">
+                <p className="text-white font-medium truncate">{notification.title}</p>
+                <p className="text-gray-400 truncate">{notification.body}</p>
             </div>
-        )}
 
-        <div className="text-sm overflow-hidden">
-            <p className="text-white font-medium truncate">{notification.title}</p>
-            <p className="text-gray-400 truncate">{notification.body}</p>
-        </div>
+            {!notification.read && (
+                <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-auto flex-shrink-0"></div>
+            )}
+        </Link>
+    );
+};
 
-        {!notification.isRead && (
-            <div className="w-2.5 h-2.5 bg-blue-500 rounded-full ml-auto flex-shrink-0"></div>
-        )}
-    </Link>
-);
-
-export default function NavigationPanel({ user, auth, appUser, isOpen, unreadCount, notifications, handleMarkAllAsRead }) {
+export default function NavigationPanel({
+                                            user,
+                                            auth,
+                                            appUser,
+                                            isOpen,
+                                            unreadCount,
+                                            notifications,
+                                            handleMarkAllAsRead,
+                                            handleMarkOneAsRead
+                                        }) {
     const username = appUser ? appUser.username : user.email.split('@')[0];
     const [isListOpen, setIsListOpen] = useState(false);
 
@@ -108,7 +127,7 @@ export default function NavigationPanel({ user, auth, appUser, isOpen, unreadCou
                                         className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 p-2 -ml-2 mb-1"
                                     >
                                         <CheckAllIcon />
-                                        <span>Oznacz wszystkie jako przeczytane</span>
+                                        <span>Mark all as read</span>
                                     </button>
                                 )}
 
@@ -116,7 +135,10 @@ export default function NavigationPanel({ user, auth, appUser, isOpen, unreadCou
                                     {notifications && notifications.length > 0 ? (
                                         notifications.slice(0, 10).map(notif => (
                                             <li key={notif.id}>
-                                                <NotificationItem notification={notif} />
+                                                <NotificationItem
+                                                    notification={notif}
+                                                    onNotificationClick={handleMarkOneAsRead}
+                                                />
                                             </li>
                                         ))
                                     ) : (

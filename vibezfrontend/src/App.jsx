@@ -32,30 +32,16 @@ function App() {
     const [appUser, setAppUser] = useState(null);
     const [loading, setLoading] = useState(true);
 
-    const [unreadCount, setUnreadCount] = useState(0);
     const [lastNotification, setLastNotification] = useState(null);
-    const [notifications, setNotifications] = useState([]); // <-- NOWA LISTA
+    const [notifications, setNotifications] = useState([]);
 
-    const fetchUnreadCount = async (token) => {
-        try {
-            const response = await fetch('http://localhost:8080/api/notifications/unread-count', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const count = await response.json();
-                setUnreadCount(count);
-            } else {
-                console.error("Nie udało się pobrać licznika nieprzeczytanych powiadomień.");
-            }
-        } catch (error) {
-            console.error("Błąd fetchUnreadCount:", error);
-        }
-    };
+    const unreadCount = notifications.filter(n => !n.read).length;
 
     const fetchNotifications = async (token) => {
         try {
             const response = await fetch('http://localhost:8080/api/notifications', {
-                headers: { 'Authorization': `Bearer ${token}` }
+                headers: { 'Authorization': `Bearer ${token}` },
+                cache: 'no-store'
             });
             if (response.ok) {
                 const data = await response.json();
@@ -78,8 +64,8 @@ function App() {
             });
 
             if (response.ok) {
-                setUnreadCount(0);
-                setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+                setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                setLastNotification(prev => prev ? { ...prev, read: true } : null);
             } else {
                 console.error("Nie udało się oznaczyć powiadomień jako przeczytane.");
             }
@@ -97,15 +83,24 @@ function App() {
             const headers = { 'Authorization': `Bearer ${token}` };
 
             stompClient.connect(headers, (frame) => {
-                console.log('WebSocket: Połączono (' + frame + ')');
 
                 stompClient.subscribe('/user/queue/notifications', (message) => {
                     const notificationDto = JSON.parse(message.body);
-                    console.log("Otrzymano powiadomienie:", notificationDto);
 
-                    setLastNotification(notificationDto);
-                    setUnreadCount(prevCount => prevCount + 1);
-                    setNotifications(prevList => [notificationDto, ...prevList]);
+
+                    setNotifications(prevList => {
+                        const exists = prevList.some(n => n.id === notificationDto.id);
+                        if (exists) {
+                            return prevList;
+                        }
+                        return [notificationDto, ...prevList];
+                    });
+
+                    if (!notificationDto.read) {
+                        setLastNotification(notificationDto);
+                    } else {
+                        console.log("Powiadomienie już przeczytane, nie pokazuję toasta:", notificationDto.id);
+                    }
                 });
             }, (error) => {
                 console.error('WebSocket: Błąd połączenia: ' + error);
@@ -140,9 +135,9 @@ function App() {
                     setUser(currentUser);
 
                     await setupNotifications();
-                    connectWebSocket(token);
-                    await fetchUnreadCount(token);
+
                     await fetchNotifications(token);
+                    connectWebSocket(token);
 
                 } catch (error) {
                     console.error("Błąd logowania lub synchronizacji:", error);
@@ -153,8 +148,8 @@ function App() {
             } else {
                 setUser(null);
                 setAppUser(null);
-                setUnreadCount(0);
                 setNotifications([]);
+                setLastNotification(null);
                 disconnectWebSocket();
             }
             setLoading(false);
@@ -184,9 +179,10 @@ function App() {
                             appUser={appUser}
                             setAppUser={setAppUser}
                             unreadCount={unreadCount}
-                            setUnreadCount={setUnreadCount}
                             lastNotification={lastNotification}
+                            setLastNotification={setLastNotification}
                             notifications={notifications}
+                            setNotifications={setNotifications}
                             handleMarkAllAsRead={handleMarkAllAsRead}
                         /> : <Navigate to="/auth" />}
             />
@@ -200,9 +196,10 @@ function App() {
                             user={user}
                             appUser={appUser}
                             unreadCount={unreadCount}
-                            setUnreadCount={setUnreadCount}
                             lastNotification={lastNotification}
+                            setLastNotification={setLastNotification}
                             notifications={notifications}
+                            setNotifications={setNotifications}
                             handleMarkAllAsRead={handleMarkAllAsRead}
                         /> : <Navigate to="/auth" />}
             />
