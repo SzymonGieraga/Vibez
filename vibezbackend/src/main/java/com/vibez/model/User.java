@@ -2,16 +2,16 @@ package com.vibez.model;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
-import org.springframework.security.core.GrantedAuthority; // <-- NOWY IMPORT
-import org.springframework.security.core.authority.SimpleGrantedAuthority; // <-- NOWY IMPORT
-import org.springframework.security.core.userdetails.UserDetails; // <-- NOWY IMPORT
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
-import java.util.*; // <-- NOWY IMPORT (dla Collection i Collections)
+import java.util.*;
 
 @Entity
 @Table(name = "app_users")
-// Dodajemy implementację interfejsu UserDetails
 public class User implements UserDetails {
 
     @Id
@@ -27,7 +27,6 @@ public class User implements UserDetails {
     private String bio;
     private String profilePictureUrl;
 
-    // ... (Twoje istniejące relacje - bez zmian) ...
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonBackReference
     private List<Comment> comments;
@@ -55,8 +54,14 @@ public class User implements UserDetails {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<DeviceToken> deviceTokens = new HashSet<>();
 
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference("user-participants")
+    private Set<ChatParticipant> chatParticipants = new HashSet<>();
 
-    // ... (Twoje istniejące konstruktory i gettery/settery - bez zmian) ...
+    @OneToMany(mappedBy = "sender", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonManagedReference("user-messages")
+    private List<ChatMessage> sentMessages = new ArrayList<>();
+
     public User() {}
     public User(String username, String email) {this.username = username;this.email = email;}
     public Long getId() {return id;}
@@ -81,51 +86,44 @@ public class User implements UserDetails {
     public void setFollowers(Set<Follow> followers) { this.followers = followers; }
     public Set<DeviceToken> getDeviceTokens() {return deviceTokens;}
     public void setDeviceTokens(Set<DeviceToken> deviceTokens) {this.deviceTokens = deviceTokens;}
-
-
-    // --- Metody z interfejsu UserDetails ---
-    // (To są "rozszerzenia", o które prosiłeś)
+    public Set<ChatParticipant> getChatParticipants() {return chatParticipants;}
+    public void setChatParticipants(Set<ChatParticipant> chatParticipants) {this.chatParticipants = chatParticipants;}
+    public List<ChatMessage> getSentMessages() {return sentMessages;}
+    public void setSentMessages(List<ChatMessage> sentMessages) {this.sentMessages = sentMessages;}
 
     @Override
-    @JsonIgnore // Ukryj to pole przed serializacją JSON
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        // Dajemy każdemu użytkownikowi domyślną rolę.
-        // Możesz to rozbudować, jeśli dodasz pole "role" do encji User.
         return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
     }
 
     @Override
-    @JsonIgnore // Ukryj to pole przed serializacją JSON
+    @JsonIgnore
     public String getPassword() {
-        // Używamy Firebase, więc nie przechowujemy hasła w tej bazie.
         return null;
     }
 
     @Override
-    @JsonIgnore // Ukryj to pole przed serializacją JSON
+    @JsonIgnore
     public boolean isAccountNonExpired() {
-        // Zakładamy, że konta nie wygasają
         return true;
     }
 
     @Override
-    @JsonIgnore // Ukryj to pole przed serializacją JSON
+    @JsonIgnore
     public boolean isAccountNonLocked() {
-        // Zakładamy, że konta nie są blokowane
         return true;
     }
 
     @Override
-    @JsonIgnore // Ukryj to pole przed serializacją JSON
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
-        // Zakładamy, że "dane uwierzytelniające" (token) nie wygasają na poziomie bazy
         return true;
     }
 
     @Override
-    @JsonIgnore // Ukryj to pole przed serializacją JSON
+    @JsonIgnore
     public boolean isEnabled() {
-        // Zakładamy, że wszyscy użytkownicy w bazie są aktywni
         return true;
     }
 }

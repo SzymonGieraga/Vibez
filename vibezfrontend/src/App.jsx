@@ -11,6 +11,7 @@ import i18n from './i18n';
 import AuthPage from './pages/AuthPage';
 import MainPage from './pages/MainPage';
 import ProfilePage from './pages/ProfilePage';
+import ChatModal from './components/ChatModal';
 import { auth } from './firebaseConfig';
 
 let stompClient = null;
@@ -34,8 +35,15 @@ function App() {
 
     const [lastNotification, setLastNotification] = useState(null);
     const [notifications, setNotifications] = useState([]);
-
     const unreadCount = notifications.filter(n => !n.read).length;
+
+    const [chatRooms, setChatRooms] = useState([]);
+    const [chatMessages, setChatMessages] = useState({});
+    const [unreadMessages, setUnreadMessages] = useState({});
+
+    const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+
+    const totalUnreadChats = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
 
     const fetchNotifications = async (token) => {
         try {
@@ -74,6 +82,71 @@ function App() {
         }
     };
 
+    const fetchChatRooms = async (token) => {
+        try {
+            const response = await fetch('http://localhost:8080/api/chats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setChatRooms(data);
+            } else {
+                console.error("Nie udało się pobrać listy czatów.");
+            }
+        } catch (error) {
+            console.error("Błąd fetchChatRooms:", error);
+        }
+    };
+
+    const fetchChatHistory = async (chatId, page = 0, size = 50) => {
+        if (!user) return;
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch(`http://localhost:8080/api/chats/${chatId}/messages?page=${page}&size=${size}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json(); // To jest obiekt Page<>
+
+                setChatMessages(prev => {
+                    const existingIds = new Set((prev[chatId] || []).map(m => m.id));
+                    const newMessages = data.content.filter(m => !existingIds.has(m.id));
+                    return {
+                        ...prev,
+                        [chatId]: [...newMessages.reverse(), ...(prev[chatId] || [])]
+                    };
+                });
+                return data;
+            }
+        } catch (error) {
+            console.error("Błąd fetchChatHistory:", error);
+        }
+    };
+
+    const createOrGetPrivateChat = async (participantUsername) => {
+        if (!user) return null;
+        const token = await user.getIdToken();
+        try {
+            const response = await fetch('http://localhost:8080/api/chats/private', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ participantUsername })
+            });
+            if (response.ok) {
+                const newRoom = await response.json();
+                setChatRooms(prev => {
+                    if (prev.find(r => r.id === newRoom.id)) return prev;
+                    return [newRoom, ...prev];
+                });
+                return newRoom;
+            }
+        } catch (error) { console.error("Błąd createOrGetPrivateChat:", error); }
+        return null;
+    };
+
     const connectWebSocket = (token) => {
         try {
             stompClient = Stomp.over(function () {
@@ -86,22 +159,47 @@ function App() {
 
                 stompClient.subscribe('/user/queue/notifications', (message) => {
                     const notificationDto = JSON.parse(message.body);
-
-
                     setNotifications(prevList => {
                         const exists = prevList.some(n => n.id === notificationDto.id);
-                        if (exists) {
-                            return prevList;
-                        }
+                        if (exists) return prevList;
                         return [notificationDto, ...prevList];
                     });
-
                     if (!notificationDto.read) {
                         setLastNotification(notificationDto);
-                    } else {
-                        console.log("Powiadomienie już przeczytane, nie pokazuję toasta:", notificationDto.id);
                     }
                 });
+
+                stompClient.subscribe('/user/queue/chat-messages', (message) => {
+                    const messageDto = JSON.parse(message.body);
+                    const roomId = messageDto.chatRoomId;
+
+                    setChatMessages(prev => ({
+                        ...prev,
+                        [roomId]: [...(prev[roomId] || []), messageDto]
+                    }));
+
+                    setUnreadMessages(prev => ({
+                        ...prev,
+                        [roomId]: (prev[roomId] || 0) + 1
+                    }));
+                });
+
+                stompClient.subscribe('/user/queue/chat-messages', (message) => {
+                    const messageDto = JSON.parse(message.body);
+                    const roomId = messageDto.chatRoomId;
+
+                    setChatMessages(prev => ({
+                        ...prev,
+                        [roomId]: [...(prev[roomId] || []), messageDto]
+                    }));
+                    if (messageDto.sender.username !== appUser?.username) {
+                        setUnreadMessages(prev => ({
+                            ...prev,
+                            [roomId]: (prev[roomId] || 0) + 1
+                        }));
+                    }
+                });
+
             }, (error) => {
                 console.error('WebSocket: Błąd połączenia: ' + error);
                 setTimeout(() => connectWebSocket(token), 5000);
@@ -115,6 +213,29 @@ function App() {
         if (stompClient) {
             stompClient.disconnect(() => console.log("WebSocket: Rozłączono."));
             stompClient = null;
+        }
+    };
+
+    const sendChatMessage = (chatId, content, reelId = null) => {
+        if (stompClient && stompClient.connected) {
+            const payload = { content, reelId };
+            stompClient.send(`/app/chat/${chatId}/send`, {}, JSON.stringify(payload));
+        } else {
+            console.error("STOMP nie jest połączony.");
+        }
+    };
+
+    const editChatMessage = (messageId, newContent) => {
+        if (stompClient && stompClient.connected) {
+            const payload = { messageId, newContent };
+            stompClient.send(`/app/chat/edit`, {}, JSON.stringify(payload));
+        }
+    };
+
+    const deleteChatMessage = (messageId) => {
+        if (stompClient && stompClient.connected) {
+            const payload = { messageId };
+            stompClient.send(`/app/chat/delete`, {}, JSON.stringify(payload));
         }
     };
 
@@ -137,6 +258,8 @@ function App() {
                     await setupNotifications();
 
                     await fetchNotifications(token);
+                    await fetchChatRooms(token);
+
                     connectWebSocket(token);
 
                 } catch (error) {
@@ -150,6 +273,10 @@ function App() {
                 setAppUser(null);
                 setNotifications([]);
                 setLastNotification(null);
+                setChatRooms([]);
+                setChatMessages({});
+                setUnreadMessages({});
+                setIsChatModalOpen(false);
                 disconnectWebSocket();
             }
             setLoading(false);
@@ -166,45 +293,66 @@ function App() {
     }
 
     return (
-        <Routes>
-            <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
+        <>
+            <Routes>
+                <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
 
-            <Route
-                path="/profile/:username"
-                element={
-                    user && appUser ?
-                        <ProfilePage
-                            auth={auth}
-                            currentUser={user}
-                            appUser={appUser}
-                            setAppUser={setAppUser}
-                            unreadCount={unreadCount}
-                            lastNotification={lastNotification}
-                            setLastNotification={setLastNotification}
-                            notifications={notifications}
-                            setNotifications={setNotifications}
-                            handleMarkAllAsRead={handleMarkAllAsRead}
-                        /> : <Navigate to="/auth" />}
+                <Route
+                    path="/profile/:username"
+                    element={
+                        user && appUser ?
+                            <ProfilePage
+                                auth={auth}
+                                currentUser={user}
+                                appUser={appUser}
+                                setAppUser={setAppUser}
+                                unreadCount={unreadCount}
+                                lastNotification={lastNotification}
+                                setLastNotification={setLastNotification}
+                                notifications={notifications}
+                                setNotifications={setNotifications}
+                                handleMarkAllAsRead={handleMarkAllAsRead}
+                                totalUnreadChats={totalUnreadChats}
+                                setIsChatModalOpen={setIsChatModalOpen}
+                            /> : <Navigate to="/auth" />}
+                />
+
+                <Route
+                    path="/"
+                    element={
+                        user && appUser ?
+                            <MainPage
+                                auth={auth}
+                                user={user}
+                                appUser={appUser}
+                                unreadCount={unreadCount}
+                                lastNotification={lastNotification}
+                                setLastNotification={setLastNotification}
+                                notifications={notifications}
+                                setNotifications={setNotifications}
+                                handleMarkAllAsRead={handleMarkAllAsRead}
+                                totalUnreadChats={totalUnreadChats}
+                                setIsChatModalOpen={setIsChatModalOpen}
+                            /> : <Navigate to="/auth" />}
+                />
+
+                <Route path="*" element={<Navigate to="/" />} />
+            </Routes>
+
+            <ChatModal
+                isOpen={isChatModalOpen}
+                onClose={() => setIsChatModalOpen(false)}
+                appUser={appUser}
+                chatRooms={chatRooms}
+                chatMessages={chatMessages}
+                unreadMessages={unreadMessages}
+                setUnreadMessages={setUnreadMessages}
+                fetchChatHistory={fetchChatHistory}
+                sendChatMessage={sendChatMessage}
+                editChatMessage={editChatMessage}
+                deleteChatMessage={deleteChatMessage}
+                createOrGetPrivateChat={createOrGetPrivateChat}
             />
-
-            <Route
-                path="/"
-                element={
-                    user && appUser ?
-                        <MainPage
-                            auth={auth}
-                            user={user}
-                            appUser={appUser}
-                            unreadCount={unreadCount}
-                            lastNotification={lastNotification}
-                            setLastNotification={setLastNotification}
-                            notifications={notifications}
-                            setNotifications={setNotifications}
-                            handleMarkAllAsRead={handleMarkAllAsRead}
-                        /> : <Navigate to="/auth" />}
-            />
-
-            <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        </>
     );
 }

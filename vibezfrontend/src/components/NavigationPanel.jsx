@@ -9,6 +9,7 @@ const SettingsIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="curren
 const NotificationIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg> );
 const CheckAllIcon = () => ( <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg> );
 const PlaceholderUserIcon = () => ( <svg className="w-8 h-8 text-gray-600" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg> );
+const ChatIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg> );
 
 const NavItem = ({ icon, label, to = "#", badge = false }) => (
     <li>
@@ -80,7 +81,9 @@ export default function NavigationPanel({
                                             unreadCount,
                                             notifications,
                                             handleMarkAllAsRead,
-                                            handleMarkOneAsRead
+                                            handleMarkOneAsRead,
+                                            totalUnreadChats,
+                                            setIsChatModalOpen
                                         }) {
     const username = appUser ? appUser.username : user.email.split('@')[0];
     const [isListOpen, setIsListOpen] = useState(false);
@@ -111,7 +114,12 @@ export default function NavigationPanel({
                     <ul className="space-y-4">
                         <NavItem icon={<HomeIcon />} label="Main Page" to="/" />
                         <NavItem icon={<ProfileIcon />} label="Your Profile" to={`/profile/${username}`} />
-
+                        <NavButton
+                            icon={<ChatIcon />}
+                            label="Messages"
+                            badge={totalUnreadChats > 0}
+                            onClick={() => setIsChatModalOpen(true)}
+                        />
                         <NavButton
                             icon={<NotificationIcon />}
                             label="Notifications"

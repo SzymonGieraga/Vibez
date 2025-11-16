@@ -20,7 +20,9 @@ export default function MainPage({
                                      setLastNotification,
                                      notifications,
                                      setNotifications,
-                                     handleMarkAllAsRead
+                                     handleMarkAllAsRead,
+                                     totalUnreadChats,
+                                     setIsChatModalOpen
                                  }) {
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isAsideOpen, setIsAsideOpen] = useState(false);
@@ -224,6 +226,8 @@ export default function MainPage({
                 notifications={notifications}
                 handleMarkAllAsRead={handleMarkAllAsRead}
                 handleMarkOneAsRead={handleMarkToastAsRead}
+                totalUnreadChats={totalUnreadChats}
+                setIsChatModalOpen={setIsChatModalOpen}
             />
 
             <aside className={`absolute top-0 right-0 h-full w-72 bg-black/80 backdrop-blur-md border-l border-gray-800 p-6 transition-transform duration-300 z-40 ${isAsideOpen ? 'translate-x-0' : 'translate-x-full'}`}>

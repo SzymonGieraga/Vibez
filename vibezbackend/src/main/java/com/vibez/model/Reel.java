@@ -52,6 +52,10 @@ public class Reel {
 
     public Reel() {}
 
+    @OneToMany(mappedBy = "reel", fetch = FetchType.LAZY)
+    @JsonIgnore
+    private List<ChatMessage> chatMessages = new ArrayList<>();
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getVideoUrl() { return videoUrl; }
@@ -62,12 +66,9 @@ public class Reel {
     public void setDescription(String description) { this.description = description; }
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }
-
-
     public String getUsername() {
         return (user != null) ? user.getUsername() : null;
     }
-
     public String getAuthor() { return author; }
     public void setAuthor(String author) { this.author = author; }
     public String getSongTitle() { return songTitle; }
@@ -78,16 +79,15 @@ public class Reel {
     public void setComments(List<Comment> comments) { this.comments = comments; }
     public int getLikeCount() { return likeCount; }
     public void setLikeCount(int likeCount) { this.likeCount = likeCount; }
-
     public Set<Like> getLikes() { return likes; }
     public void setLikes(Set<Like> likes) { this.likes = likes; }
-
     public Set<Tag> getTags() { return tags; }
     public void setTags(Set<Tag> tags) { this.tags = tags; }
-
     public void incrementLikeCount() {
         this.likeCount++;
     }
+    public List<ChatMessage> getChatMessages() {return chatMessages;}
+    public void setChatMessages(List<ChatMessage> chatMessages) {this.chatMessages = chatMessages;}
 
     public void decrementLikeCount() {
         if (this.likeCount > 0) {
