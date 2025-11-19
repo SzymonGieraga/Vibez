@@ -17,11 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -147,7 +143,9 @@ public class ChatService {
         message.setEdited(true);
         ChatMessage updatedMessage = chatMessageRepository.save(message);
 
-        broadcastUpdate(updatedMessage, "EDIT");
+        // Wysyłamy powiadomienie o edycji
+        broadcastEdit(updatedMessage);
+
         return toChatMessageDto(updatedMessage);
     }
 
@@ -161,13 +159,50 @@ public class ChatService {
 
         message.setContent("[Wiadomość usunięta]");
         message.setReel(null);
-        message.setEdited(true);
+        message.setEdited(false);
+
         ChatMessage deletedMessage = chatMessageRepository.save(message);
 
-        broadcastUpdate(deletedMessage, "DELETE");
+        broadcastDelete(deletedMessage);
 
         return toChatMessageDto(deletedMessage);
     }
+
+    private void broadcastEdit(ChatMessage message) {
+        List<User> participants = getChatParticipants(message.getChatRoom().getId());
+        ChatMessageDto messageDto = toChatMessageDto(message);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "EDIT");
+        payload.put("chatRoomId", message.getChatRoom().getId());
+        payload.put("message", messageDto);
+
+        sendToParticipants(participants, payload);
+    }
+
+    private void broadcastDelete(ChatMessage message) {
+        List<User> participants = getChatParticipants(message.getChatRoom().getId());
+        ChatMessageDto messageDto = toChatMessageDto(message);
+
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("type", "DELETE");
+        payload.put("chatRoomId", message.getChatRoom().getId());
+        payload.put("message", messageDto);
+
+        sendToParticipants(participants, payload);
+    }
+
+    private void sendToParticipants(List<User> participants, Map<String, Object> payload) {
+        for (User participant : participants) {
+            messagingTemplate.convertAndSendToUser(
+                    participant.getUsername(),
+                    "/queue/chat-updates",
+                    payload
+            );
+        }
+    }
+
+
 
     @Transactional(readOnly = true)
     public List<User> getChatParticipants(UUID chatRoomId) {

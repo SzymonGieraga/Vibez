@@ -106,7 +106,7 @@ function App() {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
-                const data = await response.json(); // To jest obiekt Page<>
+                const data = await response.json();
 
                 setChatMessages(prev => {
                     const existingIds = new Set((prev[chatId] || []).map(m => m.id));
@@ -178,26 +178,31 @@ function App() {
                         [roomId]: [...(prev[roomId] || []), messageDto]
                     }));
 
-                    setUnreadMessages(prev => ({
-                        ...prev,
-                        [roomId]: (prev[roomId] || 0) + 1
-                    }));
-                });
-
-                stompClient.subscribe('/user/queue/chat-messages', (message) => {
-                    const messageDto = JSON.parse(message.body);
-                    const roomId = messageDto.chatRoomId;
-
-                    setChatMessages(prev => ({
-                        ...prev,
-                        [roomId]: [...(prev[roomId] || []), messageDto]
-                    }));
                     if (messageDto.sender.username !== appUser?.username) {
                         setUnreadMessages(prev => ({
                             ...prev,
                             [roomId]: (prev[roomId] || 0) + 1
                         }));
                     }
+                });
+
+                stompClient.subscribe('/user/queue/chat-updates', (payload) => {
+                    const update = JSON.parse(payload.body);
+                    const roomId = update.chatRoomId;
+
+                    setChatMessages(prev => {
+                        const currentMessages = prev[roomId] || [];
+
+                        if (update.type === 'EDIT' || update.type === 'DELETE') {
+                            return {
+                                ...prev,
+                                [roomId]: currentMessages.map(msg =>
+                                    msg.id === update.message.id ? update.message : msg
+                                )
+                            };
+                        }
+                        return prev;
+                    });
                 });
 
             }, (error) => {

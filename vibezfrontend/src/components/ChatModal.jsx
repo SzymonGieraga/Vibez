@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// --- Ikony ---
 const CloseIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>);
 const SendIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>);
 const NewChatIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>);
+const KebabIcon = () => (<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>);
 
 const AvatarPlaceholder = ({ username, className = "w-10 h-10" }) => {
     const initials = username?.substring(0, 2).toUpperCase() || '??';
@@ -35,7 +35,6 @@ const TimestampDivider = ({ timestamp }) => (
         </span>
     </div>
 );
-
 
 export default function ChatModal({
                                       isOpen,
@@ -74,7 +73,6 @@ export default function ChatModal({
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [chatMessages, activeRoomId]);
-
 
     const handleRoomClick = (roomId) => {
         setActiveRoomId(roomId);
@@ -198,8 +196,18 @@ export default function ChatModal({
 
                             <div className="flex-1 p-4 overflow-y-auto space-y-2">
                                 {(chatMessages[activeRoomId] || []).map((msg, index) => {
-                                    const prevMsg = (chatMessages[activeRoomId] || [])[index - 1];
+                                    const currentMessages = chatMessages[activeRoomId] || [];
+                                    const prevMsg = currentMessages[index - 1];
+                                    const nextMsg = currentMessages[index + 1];
+
                                     const showTimestamp = !prevMsg || (new Date(msg.timestamp) - new Date(prevMsg.timestamp)) > 1000 * 60 * 10;
+
+                                    const nextMsgDiff = nextMsg ? new Date(nextMsg.timestamp) - new Date(msg.timestamp) : 0;
+                                    const nextWillBreakSequence = nextMsgDiff > 1000 * 60 * 10;
+
+                                    const showAvatar = !nextMsg ||
+                                        nextMsg.sender.username !== msg.sender.username ||
+                                        nextWillBreakSequence;
 
                                     return (
                                         <React.Fragment key={msg.id}>
@@ -209,6 +217,7 @@ export default function ChatModal({
                                                 isMe={msg.sender.username === appUser.username}
                                                 onEdit={editChatMessage}
                                                 onDelete={deleteChatMessage}
+                                                showAvatar={showAvatar}
                                             />
                                         </React.Fragment>
                                     );
@@ -250,34 +259,81 @@ export default function ChatModal({
     );
 }
 
-//TODO: editing and deleting messages
-
-function MessageBubble({ message, isMe, onEdit, onDelete }) {
+function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar }) {
     const sender = message.sender;
+    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editContent, setEditContent] = useState(message.content || "");
+
+    const isDeleted = message.content === "[Wiadomość usunięta]";
+
+    const handleSaveEdit = () => {
+        if (editContent.trim() !== "") {
+            onEdit(message.id, editContent);
+            setIsEditing(false);
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        setEditContent(message.content || "");
+    };
+
+    const handleDelete = () => {
+        onDelete(message.id);
+        setIsMenuOpen(false);
+    };
 
     return (
-        <div className={`flex items-start space-x-3 ${isMe ? 'justify-end' : 'justify-start'}`}>
+        <div className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} group relative`}>
 
             {!isMe && (
-                <div className="flex-shrink-0">
-                    {sender.profilePictureUrl ? (
-                        <img src={sender.profilePictureUrl} alt={sender.username} className="w-10 h-10 rounded-full" />
+                <div className="flex-shrink-0 w-10">
+                    {showAvatar ? (
+                        sender.profilePictureUrl ? (
+                            <img src={sender.profilePictureUrl} alt={sender.username} className="w-10 h-10 rounded-full" />
+                        ) : (
+                            <AvatarPlaceholder username={sender.username} className="w-10 h-10" />
+                        )
                     ) : (
-                        <AvatarPlaceholder username={sender.username} className="w-10 h-10" />
+                        <div className="w-10 h-10" />
                     )}
                 </div>
             )}
 
-            <div className={`p-3 rounded-2xl max-w-xs lg:max-w-md ${
-                isMe ? 'bg-gray-800 rounded-br-lg text-white'
-                    : 'bg-gray-700 rounded-bl-lg text-white'
-            }`}>
+            {isMe && !isEditing && !isDeleted && (
+                <div className="relative self-center mb-3">
+                    <button
+                        onClick={() => setIsMenuOpen(!isMenuOpen)}
+                        className="text-gray-500 hover:text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                        <KebabIcon />
+                    </button>
+                    {isMenuOpen && (
+                        <>
+                            <div className="fixed inset-0 z-10" onClick={() => setIsMenuOpen(false)}></div>
+                            <div className="absolute right-0 bottom-8 w-32 bg-gray-800 border border-gray-600 rounded shadow-lg z-20 overflow-hidden">
+                                <button
+                                    onClick={() => { setIsEditing(true); setIsMenuOpen(false); }}
+                                    className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-700 text-white"
+                                >
+                                    Edytuj
+                                </button>
+                                <button
+                                    onClick={handleDelete}
+                                    className="block w-full text-left px-4 py-2 text-sm hover:bg-red-900/50 text-red-400"
+                                >
+                                    Usuń
+                                </button>
+                            </div>
+                        </>
+                    )}
+                </div>
+            )}
 
-                {!isMe && (
-                    <p className="text-xs font-bold text-blue-300 mb-1">{sender.username}</p>
-                )}
+            <div className={`p-3 rounded-2xl max-w-xs lg:max-w-md ${isMe ? 'bg-gray-800 rounded-br-lg text-white' : 'bg-gray-700 rounded-bl-lg text-white'} ${isDeleted ? 'bg-gray-600/50 italic text-gray-400' : ''}`}>
 
-                {message.reel && (
+                {message.reel && !isDeleted && (
                     <div className="bg-gray-900 p-2 rounded-lg mb-2">
                         <img src={message.reel.thumbnailUrl} alt="Reel" className="w-full rounded-md" />
                         <p className="mt-1 text-sm font-semibold">{message.reel.songTitle}</p>
@@ -285,14 +341,33 @@ function MessageBubble({ message, isMe, onEdit, onDelete }) {
                     </div>
                 )}
 
-                {message.content && (
-                    <p className="break-words whitespace-pre-wrap">
-                        {message.content}
-                    </p>
-                )}
+                {isEditing ? (
+                    <div className="flex flex-col space-y-2 min-w-[200px]">
+                        <textarea
+                            value={editContent}
+                            onChange={(e) => setEditContent(e.target.value)}
+                            className="w-full p-2 bg-gray-900 text-white border border-gray-600 rounded text-sm outline-none resize-none"
+                            rows={2}
+                        />
+                        <div className="flex justify-end space-x-2 text-xs">
+                            <button onClick={handleCancelEdit} className="text-gray-400 hover:text-white">Anuluj</button>
+                            <button onClick={handleSaveEdit} className="text-blue-400 hover:text-blue-300 font-semibold">Zapisz</button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {isDeleted ? (
+                            <p className="text-sm select-none">Wiadomość usunięta</p>
+                        ) : (
+                            <p className="break-words whitespace-pre-wrap">
+                                {message.content}
+                            </p>
+                        )}
 
-                {message.isEdited && (
-                    <span className="text-xs text-gray-400 mt-1 block text-right">(edytowano)</span>
+                        {!isDeleted && message.edited && (
+                            <span className="text-xs text-gray-400 mt-1 block text-right">(Edytowano)</span>
+                        )}
+                    </>
                 )}
             </div>
         </div>
