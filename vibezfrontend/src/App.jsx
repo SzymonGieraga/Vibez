@@ -12,6 +12,7 @@ import AuthPage from './pages/AuthPage';
 import MainPage from './pages/MainPage';
 import ProfilePage from './pages/ProfilePage';
 import ChatModal from './components/ChatModal';
+import ToastNotification from './components/ToastNotification';
 import { auth } from './firebaseConfig';
 
 let stompClient = null;
@@ -40,8 +41,10 @@ function App() {
     const [chatRooms, setChatRooms] = useState([]);
     const [chatMessages, setChatMessages] = useState({});
     const [unreadMessages, setUnreadMessages] = useState({});
-
     const [isChatModalOpen, setIsChatModalOpen] = useState(false);
+
+    const [toast, setToast] = useState(null);
+    const [isMarkingAsRead, setIsMarkingAsRead] = useState(false);
 
     const totalUnreadChats = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
 
@@ -54,8 +57,6 @@ function App() {
             if (response.ok) {
                 const data = await response.json();
                 setNotifications(data);
-            } else {
-                console.error("Nie udało się pobrać listy powiadomień.");
             }
         } catch (error) {
             console.error("Błąd fetchNotifications:", error);
@@ -74,13 +75,55 @@ function App() {
             if (response.ok) {
                 setNotifications(prev => prev.map(n => ({ ...n, read: true })));
                 setLastNotification(prev => prev ? { ...prev, read: true } : null);
-            } else {
-                console.error("Nie udało się oznaczyć powiadomień jako przeczytane.");
             }
         } catch (error) {
             console.error("Błąd handleMarkAllAsRead:", error);
         }
     };
+
+    const handleMarkToastAsRead = async (notification) => {
+        if (!notification || isMarkingAsRead || notification.read) return;
+        setIsMarkingAsRead(true);
+
+        try {
+            const token = await user.getIdToken();
+            const response = await fetch(`http://localhost:8080/api/notifications/${notification.id}/read`, {
+                method: 'PATCH',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+
+            if (response.ok) {
+                setNotifications(prev => prev.map(n => n.id === notification.id ? { ...n, read: true } : n));
+                if (lastNotification?.id === notification.id) {
+                    setLastNotification(prev => ({ ...prev, read: true }));
+                }
+            }
+        } catch (error) {
+            console.error("Błąd oznaczania powiadomienia:", error);
+        } finally {
+            setIsMarkingAsRead(false);
+        }
+    };
+
+    const handleToastClose = () => {
+        if (toast) handleMarkToastAsRead(toast);
+        setToast(null);
+    };
+
+    const handleToastLinkClick = () => {
+        if (toast) handleMarkToastAsRead(toast);
+    };
+
+    useEffect(() => {
+        if (lastNotification && !lastNotification.read) {
+            setToast(lastNotification);
+            setIsMarkingAsRead(false);
+            const timer = setTimeout(() => {
+                setToast(null);
+            }, 5000);
+            return () => clearTimeout(timer);
+        }
+    }, [lastNotification]);
 
     const fetchChatRooms = async (token) => {
         try {
@@ -90,8 +133,6 @@ function App() {
             if (response.ok) {
                 const data = await response.json();
                 setChatRooms(data);
-            } else {
-                console.error("Nie udało się pobrać listy czatów.");
             }
         } catch (error) {
             console.error("Błąd fetchChatRooms:", error);
@@ -107,14 +148,10 @@ function App() {
             });
             if (response.ok) {
                 const data = await response.json();
-
                 setChatMessages(prev => {
                     const existingIds = new Set((prev[chatId] || []).map(m => m.id));
                     const newMessages = data.content.filter(m => !existingIds.has(m.id));
-                    return {
-                        ...prev,
-                        [chatId]: [...newMessages.reverse(), ...(prev[chatId] || [])]
-                    };
+                    return { ...prev, [chatId]: [...newMessages.reverse(), ...(prev[chatId] || [])] };
                 });
                 return data;
             }
@@ -149,14 +186,11 @@ function App() {
 
     const connectWebSocket = (token) => {
         try {
-            stompClient = Stomp.over(function () {
-                return new SockJS('http://localhost:8080/ws');
-            });
+            stompClient = Stomp.over(function () { return new SockJS('http://localhost:8080/ws'); });
             stompClient.debug = () => {};
             const headers = { 'Authorization': `Bearer ${token}` };
 
             stompClient.connect(headers, (frame) => {
-
                 stompClient.subscribe('/user/queue/notifications', (message) => {
                     const notificationDto = JSON.parse(message.body);
                     setNotifications(prevList => {
@@ -189,16 +223,12 @@ function App() {
                 stompClient.subscribe('/user/queue/chat-updates', (payload) => {
                     const update = JSON.parse(payload.body);
                     const roomId = update.chatRoomId;
-
                     setChatMessages(prev => {
                         const currentMessages = prev[roomId] || [];
-
                         if (update.type === 'EDIT' || update.type === 'DELETE') {
                             return {
                                 ...prev,
-                                [roomId]: currentMessages.map(msg =>
-                                    msg.id === update.message.id ? update.message : msg
-                                )
+                                [roomId]: currentMessages.map(msg => msg.id === update.message.id ? update.message : msg)
                             };
                         }
                         return prev;
@@ -206,41 +236,35 @@ function App() {
                 });
 
             }, (error) => {
-                console.error('WebSocket: Błąd połączenia: ' + error);
                 setTimeout(() => connectWebSocket(token), 5000);
             });
         } catch (error) {
-            console.error("WebSocket: Błąd inicjalizacji.", error);
+            console.error("WebSocket init error:", error);
         }
     };
 
     const disconnectWebSocket = () => {
         if (stompClient) {
-            stompClient.disconnect(() => console.log("WebSocket: Rozłączono."));
+            stompClient.disconnect();
             stompClient = null;
         }
     };
 
     const sendChatMessage = (chatId, content, reelId = null) => {
         if (stompClient && stompClient.connected) {
-            const payload = { content, reelId };
-            stompClient.send(`/app/chat/${chatId}/send`, {}, JSON.stringify(payload));
-        } else {
-            console.error("STOMP nie jest połączony.");
+            stompClient.send(`/app/chat/${chatId}/send`, {}, JSON.stringify({ content, reelId }));
         }
     };
 
     const editChatMessage = (messageId, newContent) => {
         if (stompClient && stompClient.connected) {
-            const payload = { messageId, newContent };
-            stompClient.send(`/app/chat/edit`, {}, JSON.stringify(payload));
+            stompClient.send(`/app/chat/edit`, {}, JSON.stringify({ messageId, newContent }));
         }
     };
 
     const deleteChatMessage = (messageId) => {
         if (stompClient && stompClient.connected) {
-            const payload = { messageId };
-            stompClient.send(`/app/chat/delete`, {}, JSON.stringify(payload));
+            stompClient.send(`/app/chat/delete`, {}, JSON.stringify({ messageId }));
         }
     };
 
@@ -259,16 +283,13 @@ function App() {
 
                     setAppUser(appUserData);
                     setUser(currentUser);
-
                     await setupNotifications();
-
                     await fetchNotifications(token);
                     await fetchChatRooms(token);
-
                     connectWebSocket(token);
 
                 } catch (error) {
-                    console.error("Błąd logowania lub synchronizacji:", error);
+                    console.error("Auth sync error:", error);
                     setAppUser(null);
                     setUser(null);
                     disconnectWebSocket();
@@ -293,54 +314,49 @@ function App() {
         };
     }, []);
 
-    if (loading) {
-        return <div className="bg-black text-white flex items-center justify-center h-screen">Loading...</div>;
-    }
+    if (loading) return <div className="bg-black text-white flex items-center justify-center h-screen">Loading...</div>;
 
     return (
         <>
+            <ToastNotification
+                notification={toast}
+                onLinkClick={handleToastLinkClick}
+                onClose={handleToastClose}
+            />
+
             <Routes>
                 <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
-
                 <Route
                     path="/profile/:username"
-                    element={
-                        user && appUser ?
-                            <ProfilePage
-                                auth={auth}
-                                currentUser={user}
-                                appUser={appUser}
-                                setAppUser={setAppUser}
-                                unreadCount={unreadCount}
-                                lastNotification={lastNotification}
-                                setLastNotification={setLastNotification}
-                                notifications={notifications}
-                                setNotifications={setNotifications}
-                                handleMarkAllAsRead={handleMarkAllAsRead}
-                                totalUnreadChats={totalUnreadChats}
-                                setIsChatModalOpen={setIsChatModalOpen}
-                            /> : <Navigate to="/auth" />}
+                    element={user && appUser ? <ProfilePage
+                        auth={auth}
+                        currentUser={user}
+                        appUser={appUser}
+                        setAppUser={setAppUser}
+                        unreadCount={unreadCount}
+                        lastNotification={lastNotification}
+                        setLastNotification={setLastNotification}
+                        notifications={notifications}
+                        setNotifications={setNotifications}
+                        handleMarkAllAsRead={handleMarkAllAsRead}
+                        totalUnreadChats={totalUnreadChats}
+                        setIsChatModalOpen={setIsChatModalOpen}
+                    /> : <Navigate to="/auth" />}
                 />
-
                 <Route
                     path="/"
-                    element={
-                        user && appUser ?
-                            <MainPage
-                                auth={auth}
-                                user={user}
-                                appUser={appUser}
-                                unreadCount={unreadCount}
-                                lastNotification={lastNotification}
-                                setLastNotification={setLastNotification}
-                                notifications={notifications}
-                                setNotifications={setNotifications}
-                                handleMarkAllAsRead={handleMarkAllAsRead}
-                                totalUnreadChats={totalUnreadChats}
-                                setIsChatModalOpen={setIsChatModalOpen}
-                            /> : <Navigate to="/auth" />}
+                    element={user && appUser ? <MainPage
+                        auth={auth}
+                        user={user}
+                        appUser={appUser}
+                        unreadCount={unreadCount}
+                        notifications={notifications}
+                        handleMarkAllAsRead={handleMarkAllAsRead}
+                        handleMarkOneAsRead={handleMarkToastAsRead}
+                        totalUnreadChats={totalUnreadChats}
+                        setIsChatModalOpen={setIsChatModalOpen}
+                    /> : <Navigate to="/auth" />}
                 />
-
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
 

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import {apiClient} from "../api/apiClient.js";
 
 const FormInput = ({ label, name, value, onChange, placeholder, required = false }) => (
     <div>
@@ -373,7 +374,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
             formDataToSend.append('genre', formData.genre);
             formDataToSend.append('tags', formData.tags);
 
-            const saveResponse = await fetch('http://localhost:8080/api/reels', {
+            const saveResponse = await apiClient('/reels', {
                 method: 'POST',
                 body: formDataToSend,
             });

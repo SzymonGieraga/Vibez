@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { apiClient } from '../api/apiClient';
 
 const SmallHeartIcon = ({ isLiked, disabled }) => (
     <svg
@@ -234,8 +235,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
         if (isOpen && currentUser?.username) {
             const fetchLikedComments = async () => {
                 try {
-                    const response = await fetch(`http://localhost:8080/api/comments/liked/${currentUser.username}`);
-                    if (!response.ok) throw new Error('Failed to fetch liked comments');
+                    const response = await apiClient(`/comments/liked/${currentUser.username}`);
                     const ids = await response.json();
                     setLikedCommentIds(new Set(ids));
                 } catch (error) {
@@ -260,11 +260,9 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
 
         setTogglingCommentLikes(prev => new Set(prev).add(commentId));
         const method = isCurrentlyLiked ? 'DELETE' : 'POST';
-        const url = `http://localhost:8080/api/comments/${commentId}/like?username=${currentUser.username}`;
 
         try {
-            const response = await fetch(url, { method });
-            if (!response.ok) throw new Error('Failed to update comment like');
+            await apiClient(`/comments/${commentId}/like?username=${currentUser.username}`, { method });
             setLikedCommentIds(prev => {
                 const newSet = new Set(prev);
                 if (isCurrentlyLiked) newSet.delete(commentId);
@@ -300,10 +298,9 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
         }
 
         try {
-            const response = await fetch(`http://localhost:8080/api/comments?${params.toString()}`, {
+            await apiClient(`/comments?${params.toString()}`, {
                 method: 'POST'
             });
-            if (!response.ok) throw new Error('Failed to add comment');
             onCommentChange();
             setNewCommentText("");
             setReplyingTo(null);
@@ -315,12 +312,10 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
     const handleUpdateComment = async (commentId, text) => {
         const params = new URLSearchParams({ username: currentUser.username });
         try {
-            const response = await fetch(`http://localhost:8080/api/comments/${commentId}?${params.toString()}`, {
+            await apiClient(`/comments/${commentId}?${params.toString()}`, {
                 method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: text })
             });
-            if (!response.ok) throw new Error('Failed to update comment');
             onCommentChange();
         } catch (error) { console.error("Error updating comment:", error); }
     };
@@ -328,7 +323,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
     const handleDeleteComment = async (commentId) => {
         const params = new URLSearchParams({ username: currentUser.username });
         try {
-            await fetch(`http://localhost:8080/api/comments/${commentId}?${params.toString()}`, { method: 'DELETE' });
+            await apiClient(`/comments/${commentId}?${params.toString()}`, { method: 'DELETE' });
             onCommentChange();
 
             setFocusStackIds(prevStack => {
@@ -342,7 +337,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
     const handlePinComment = async (commentId) => {
         const params = new URLSearchParams({ username: currentUser.username });
         try {
-            await fetch(`http://localhost:8080/api/comments/${commentId}/pin?${params.toString()}`, { method: 'POST' });
+            await apiClient(`/comments/${commentId}/pin?${params.toString()}`, { method: 'POST' });
             onCommentChange();
         } catch (error) { console.error("Error pinning comment:", error); }
     };
@@ -365,7 +360,6 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
     const handleGoToMain = () => {
         setFocusStackIds([]);
     };
-
 
     const allComments = reel?.comments || [];
     const sortedComments = [...allComments].sort((a, b) => {

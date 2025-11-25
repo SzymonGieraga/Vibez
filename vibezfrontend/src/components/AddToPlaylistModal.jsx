@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiClient } from '../api/apiClient';
 
 const LoadingSpinner = () => <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>;
 
@@ -30,10 +31,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
     const fetchPlaylists = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(
-                `http://localhost:8080/api/playlists/user/${appUser.username}?requestingUsername=${appUser.username}`
-            );
-            if (!response.ok) throw new Error('Could not fetch playlists');
+            const response = await apiClient(`/playlists/user/${appUser.username}?requestingUsername=${appUser.username}`);
             const data = await response.json();
             setPlaylists(data);
 
@@ -51,9 +49,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
             });
 
             if (playlistsContainingReel.size === 0) {
-                const checkResponse = await fetch(
-                    `http://localhost:8080/api/playlists/check-reel/${reelToAdd.id}?username=${appUser.username}`
-                );
+                const checkResponse = await apiClient(`/playlists/check-reel/${reelToAdd.id}?username=${appUser.username}`);
                 if (checkResponse.ok) {
                     const checkData = await checkResponse.json();
                     Object.entries(checkData).forEach(([playlistId, contains]) => {
@@ -64,7 +60,6 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                 }
             }
 
-            console.log('Playlists containing reel:', Array.from(playlistsContainingReel));
             setPlaylistsWithReel(playlistsContainingReel);
         } catch (err) {
             console.error('Error fetching playlists:', err);
@@ -80,17 +75,8 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
 
         try {
             const method = isInPlaylist ? 'DELETE' : 'POST';
-            const response = await fetch(
-                `http://localhost:8080/api/playlists/${playlistId}/reels/${reelToAdd.id}?username=${appUser.username}`,
-                { method }
-            );
+            await apiClient(`/playlists/${playlistId}/reels/${reelToAdd.id}?username=${appUser.username}`, { method });
 
-            if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || 'Operation failed');
-            }
-
-            // Zaktualizuj lokalny state
             setPlaylistsWithReel(prev => {
                 const newSet = new Set(prev);
                 if (isInPlaylist) {
@@ -106,7 +92,6 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                 isError: false
             });
 
-            // Odśwież playlisty aby zaktualizować liczniki
             setTimeout(() => {
                 fetchPlaylists();
                 setMessage({ text: '', isError: false });
@@ -128,18 +113,11 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                 isPublic: formData.isPublic
             });
 
-            const createResponse = await fetch(
-                `http://localhost:8080/api/playlists?${params.toString()}`,
-                { method: 'POST' }
-            );
-            if (!createResponse.ok) throw new Error('Failed to create playlist');
-
+            const createResponse = await apiClient(`/playlists?${params.toString()}`, { method: 'POST' });
             const newPlaylist = await createResponse.json();
 
             await handleToggleReel(newPlaylist.id, false);
-
             setShowCreateForm(false);
-
             await fetchPlaylists();
         } catch (err) {
             setMessage({ text: err.message, isError: true });
