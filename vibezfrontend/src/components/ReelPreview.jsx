@@ -1,30 +1,48 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/apiClient';
 
+const EyeIcon = () => (
+    <svg className="w-3 h-3 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+    </svg>
+);
+
 const ReelPreview = ({ reel }) => {
     const [isHovering, setIsHovering] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [previewData, setPreviewData] = useState(null);
     const [currentFrame, setCurrentFrame] = useState(0);
     const [isLoading, setIsLoading] = useState(false);
+
     const hoverTimerRef = useRef(null);
     const frameIntervalRef = useRef(null);
     const audioRef = useRef(null);
     const [audioEnabled, setAudioEnabled] = useState(false);
     const [audioBlocked, setAudioBlocked] = useState(false);
 
+    const formatViewCount = (count) => {
+        if (!count) return '0';
+        if (count >= 1000000) return (count / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+        if (count >= 1000) return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+        return count.toString();
+    };
+
     useEffect(() => {
         if (isHovering) {
+            setIsLoading(true);
+
             hoverTimerRef.current = setTimeout(async () => {
-                setIsLoading(true);
                 try {
                     const response = await apiClient(`/reels/${reel.id}/preview`);
-                    const preview = await response.json();
-                    if (preview.frameUrls && preview.frameUrls.length > 0) {
-                        setPreviewData(preview);
-                        setShowPreview(true);
-                        startFrameAnimation(preview.frameUrls.length);
-                        loadAudio();
+                    if (response.ok) {
+                        const preview = await response.json();
+                        if (preview.frameUrls && preview.frameUrls.length > 0) {
+                            setPreviewData(preview);
+                            setShowPreview(true);
+                            startFrameAnimation(preview.frameUrls.length);
+                            loadAudio();
+                        }
                     }
                 } catch (error) {
                     console.error('Failed to load preview:', error);
@@ -33,16 +51,13 @@ const ReelPreview = ({ reel }) => {
                 }
             }, 3000);
         } else {
-            if (hoverTimerRef.current) {
-                clearTimeout(hoverTimerRef.current);
-            }
+            setIsLoading(false);
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
             stopPreview();
         }
 
         return () => {
-            if (hoverTimerRef.current) {
-                clearTimeout(hoverTimerRef.current);
-            }
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
             stopPreview();
         };
     }, [isHovering, reel.id]);
@@ -59,11 +74,7 @@ const ReelPreview = ({ reel }) => {
         setCurrentFrame(0);
         setPreviewData(null);
         setIsLoading(false);
-
-        if (frameIntervalRef.current) {
-            clearInterval(frameIntervalRef.current);
-        }
-
+        if (frameIntervalRef.current) clearInterval(frameIntervalRef.current);
         if (audioRef.current) {
             audioRef.current.pause();
             audioRef.current.currentTime = 0;
@@ -74,9 +85,7 @@ const ReelPreview = ({ reel }) => {
         if (audioRef.current) {
             audioRef.current.volume = 0.5;
             audioRef.current.muted = false;
-
             const playPromise = audioRef.current.play();
-
             if (playPromise !== undefined) {
                 playPromise
                     .then(() => {
@@ -84,7 +93,6 @@ const ReelPreview = ({ reel }) => {
                         setAudioBlocked(false);
                     })
                     .catch(error => {
-                        console.log('Audio autoplay prevented:', error);
                         setAudioBlocked(true);
                         setAudioEnabled(false);
                     });
@@ -114,7 +122,7 @@ const ReelPreview = ({ reel }) => {
 
     return (
         <div
-            className="aspect-w-9 aspect-h-16 bg-gray-900 group relative overflow-hidden cursor-pointer"
+            className="aspect-w-9 aspect-h-16 bg-gray-900 group relative overflow-hidden cursor-pointer rounded-sm shadow-sm"
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
         >
@@ -126,12 +134,19 @@ const ReelPreview = ({ reel }) => {
                 }`}
             />
 
+            {!showPreview && (
+                <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 text-white text-xs font-bold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">
+                    <EyeIcon />
+                    <span>{formatViewCount(reel.viewCount)}</span>
+                </div>
+            )}
+
             {showPreview && previewData && previewData.frameUrls && (
                 <>
                     <img
                         src={previewData.frameUrls[currentFrame]}
                         alt="Preview"
-                        className="absolute inset-0 w-full h-full object-cover"
+                        className="absolute inset-0 w-full h-full object-cover animate-fade-in"
                     />
                     <audio ref={audioRef} src={reel.videoUrl} loop />
 
@@ -141,11 +156,13 @@ const ReelPreview = ({ reel }) => {
                 </>
             )}
 
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center p-2">
-                <p className="text-white text-sm font-bold text-center">{reel.songTitle}</p>
+            <div className={`absolute inset-0 bg-black/40 flex items-center justify-center p-2 transition-opacity duration-300 pointer-events-none ${
+                (isHovering && !showPreview) ? 'opacity-100' : 'opacity-0'
+            }`}>
+                <p className="text-white text-sm font-bold text-center drop-shadow-md">{reel.songTitle}</p>
             </div>
 
-            {(isHovering && !showPreview) && (
+            {(isHovering && !showPreview && isLoading) && (
                 <div className="absolute bottom-2 right-2">
                     <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -155,38 +172,26 @@ const ReelPreview = ({ reel }) => {
             )}
 
             {showPreview && (
-                <div className="absolute top-2 right-2 flex gap-1">
-                    {audioBlocked && (
+                <div className="absolute top-2 right-2 flex gap-1 z-20">
+                    {audioBlocked ? (
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                enableAudio();
-                            }}
-                            className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full p-1 transition-colors"
-                            title="Click to enable audio"
+                            onClick={(e) => { e.stopPropagation(); enableAudio(); }}
+                            className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full p-1.5 transition-colors shadow-sm"
+                            title="Unblock Audio"
                         >
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                            </svg>
+                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
                         </button>
-                    )}
-
-                    {!audioBlocked && (
+                    ) : (
                         <button
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                toggleAudio();
-                            }}
-                            className="bg-black/50 hover:bg-black/70 text-white rounded-full p-1 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); toggleAudio(); }}
+                            className="bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors shadow-sm"
                             title={audioEnabled ? "Mute" : "Unmute"}
                         >
                             {audioEnabled ? (
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd" />
                                 </svg>
                             ) : (
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM12.293 7.293a1 1 0 011.414 0L15 8.586l1.293-1.293a1 1 0 111.414 1.414L16.414 10l1.293 1.293a1 1 0 01-1.414 1.414L15 11.414l-1.293 1.293a1 1 0 01-1.414-1.414L13.586 10l-1.293-1.293a1 1 0 010-1.414z" clipRule="evenodd" />
                                 </svg>
                             )}
                         </button>

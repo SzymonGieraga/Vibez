@@ -1,20 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiClient } from '../api/apiClient'; // Upewnij się, że masz import apiClient
 
+// Ikony specyficzne dla odtwarzacza
 const MuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l4-4m0 4l-4-4" /></svg> );
 const UnmuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-1.464a5 5 0 010-7.072" /></svg> );
 const PlayIcon = () => ( <svg className="w-20 h-20 text-white opacity-70" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg> );
-const HeartIcon = ({ isLiked }) => (
-    <svg
-        className={`w-8 h-8 ${isLiked ? 'text-red-500' : ''}`}
-        fill={isLiked ? 'currentColor' : 'none'}
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-    >
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" />
-    </svg>
-);
+const HeartIcon = ({ isLiked }) => ( <svg className={`w-8 h-8 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg> );
 const CommentIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 const BookmarkIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>;
+const EyeIcon = () => ( <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> );
+
 
 export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOpen, isCommentsOpen, appUser, likedReelIds, onLikeToggle, isTogglingLike, currentVideoIndex, setCurrentVideoIndex, onOpenPlaylistModal }) {
     const [isPlaying, setIsPlaying] = useState(true);
@@ -24,6 +19,7 @@ export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOp
 
     const videoRef = useRef(null);
     const progressRef = useRef(null);
+    const viewCountedRef = useRef(false);
 
     useEffect(() => {
         const video = videoRef.current;
@@ -48,6 +44,26 @@ export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOp
             video.removeEventListener('loadeddata', handleLoadedData);
         };
     }, [currentVideoIndex, volume, videos]);
+
+    // Obsługa zliczania wyświetleń
+    useEffect(() => {
+        viewCountedRef.current = false;
+
+        const videoId = videos[currentVideoIndex]?.id;
+        if (!videoId) return;
+
+        // Zalicz wyświetlenie dopiero po 2 sekundach oglądania, aby uniknąć spamu przy szybkim przewijaniu
+        const timer = setTimeout(() => {
+            if (!viewCountedRef.current) {
+                apiClient(`/reels/${videoId}/view`, { method: 'POST' })
+                    .catch(err => console.error("Failed to count view", err));
+                viewCountedRef.current = true;
+            }
+        }, 2000);
+
+        return () => clearTimeout(timer);
+    }, [currentVideoIndex, videos]);
+
 
     useEffect(() => { if(videoRef.current) videoRef.current.volume = volume; }, [volume]);
 
@@ -169,6 +185,10 @@ const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => (
     <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
         <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>
         <div className="text-left text-sm space-y-2">
+            <div className="flex items-center gap-2 mb-2">
+                <EyeIcon />
+                <span className="text-gray-300 text-xs">{video.viewCount || 0} views</span>
+            </div>
             <DetailRow label="Song" value={`${video.songTitle} by ${video.author}`} />
             <DetailRow label="Genre" value={video.genre} />
             <DetailRow label="Posted by" value={`@${video.username}`} />

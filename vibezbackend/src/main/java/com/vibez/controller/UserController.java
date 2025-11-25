@@ -122,12 +122,11 @@ public class UserController {
         }
     }
     @PostMapping("/me/register-device-token")
-    @Transactional // Ważne dla operacji na encjach
+    @Transactional
     public ResponseEntity<?> registerDeviceToken(
-            @AuthenticationPrincipal User user, // <-- Pobiera usera z FirebaseTokenFilter
-            @RequestBody String tokenString) { // <-- Odczytuje "text/plain" z front-endu
+            @AuthenticationPrincipal User user,
+            @RequestBody String tokenString) {
 
-        // Zabezpieczenie (dzięki Twojemu filtrowi to powinno być OK)
         if (user == null) {
             return ResponseEntity.status(401).body("Brak autoryzacji");
         }
@@ -137,19 +136,15 @@ public class UserController {
         }
 
         try {
-            // Sprawdź, czy ten token już istnieje, aby uniknąć duplikatów
             if (deviceTokenRepository.findByToken(tokenString).isPresent()) {
                 return ResponseEntity.ok("Token już zarejestrowany");
             }
-
-            // Utwórz i zapisz nowy token
             DeviceToken deviceToken = new DeviceToken(tokenString, user);
             deviceTokenRepository.save(deviceToken);
 
             return ResponseEntity.ok("Token zarejestrowany pomyślnie");
 
         } catch (Exception e) {
-            // Zwróć 500 z komunikatem błędu
             return ResponseEntity.status(500).body("Błąd serwera podczas zapisywania tokena: " + e.getMessage());
         }
     }

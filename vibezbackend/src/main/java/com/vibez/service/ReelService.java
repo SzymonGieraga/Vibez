@@ -177,4 +177,12 @@ public class ReelService {
         }
         reel.setComments(new ArrayList<>(uniqueComments.values()));
     }
+
+    @Transactional
+    public void incrementViewCount(Long reelId) {
+        Reel reel = reelRepository.findById(reelId)
+                .orElseThrow(() -> new EntityNotFoundException("Reel not found: " + reelId));
+        reel.incrementViewCount();
+        reelRepository.save(reel);
+    }
 }

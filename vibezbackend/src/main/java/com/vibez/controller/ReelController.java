@@ -201,4 +201,9 @@ public class ReelController {
             }
         }
     }
+    @PostMapping("/{reelId}/view")
+    public ResponseEntity<Void> incrementViewCount(@PathVariable Long reelId) {
+        reelService.incrementViewCount(reelId);
+        return ResponseEntity.ok().build();
+    }
 }

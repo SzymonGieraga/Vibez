@@ -56,6 +56,8 @@ public class Reel {
     @JsonIgnore
     private List<ChatMessage> chatMessages = new ArrayList<>();
 
+    private long viewCount = 0;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getVideoUrl() { return videoUrl; }
@@ -88,10 +90,13 @@ public class Reel {
     }
     public List<ChatMessage> getChatMessages() {return chatMessages;}
     public void setChatMessages(List<ChatMessage> chatMessages) {this.chatMessages = chatMessages;}
+    public long getViewCount() { return viewCount; }
+    public void setViewCount(long viewCount) { this.viewCount = viewCount; }
 
     public void decrementLikeCount() {
         if (this.likeCount > 0) {
             this.likeCount--;
         }
     }
+    public void incrementViewCount() { this.viewCount++; }
 }
