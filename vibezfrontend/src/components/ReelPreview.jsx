@@ -8,6 +8,12 @@ const EyeIcon = () => (
     </svg>
 );
 
+const FireIcon = () => (
+    <svg className="w-3 h-3 md:w-4 md:h-4 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M12.395 2.553a1 1 0 00-1.45-.385c-.345.23-.614.558-.822.88-.214.33-.403.713-.57 1.116-.334.804-.614 1.768-.84 2.734a31.365 31.365 0 00-.613 3.58 2.64 2.64 0 01-.945-1.067c-.328-.68-.398-1.534-.398-2.654A1 1 0 005.05 6.05 6.981 6.981 0 003 11a7 7 0 1011.95-4.95c-.592-.591-.98-.985-1.348-1.467-.363-.476-.724-1.063-1.207-2.03zM12.12 15.12A3 3 0 017 13s.879.5 2.5.5c0-1 .5-4 1.25-4.5.5 1 .786 1.293 1.371 1.879A2.99 2.99 0 0113 13a2.99 2.99 0 01-.879 2.121z" clipRule="evenodd" />
+    </svg>
+);
+
 const ReelPreview = ({ reel }) => {
     const [isHovering, setIsHovering] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
@@ -27,6 +33,25 @@ const ReelPreview = ({ reel }) => {
         if (count >= 1000) return (count / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
         return count.toString();
     };
+
+    const isTrending = () => {
+        if (!reel.viewCount) return false;
+
+        if (reel.viewCount >= 1000000) return true;
+
+        if (reel.createdAt) {
+            const created = new Date(reel.createdAt);
+            const now = new Date();
+            const hoursDiff = (now - created) / (1000 * 60 * 60);
+
+            if (hoursDiff < 24 && reel.viewCount > 500) return true;
+            if (hoursDiff < 72 && reel.viewCount > 2000) return true;
+        }
+
+        return false;
+    };
+
+    const isHot = isTrending();
 
     useEffect(() => {
         if (isHovering) {
@@ -135,8 +160,8 @@ const ReelPreview = ({ reel }) => {
             />
 
             {!showPreview && (
-                <div className="absolute bottom-2 left-2 z-10 flex items-center gap-1 text-white text-xs font-bold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)]">
-                    <EyeIcon />
+                <div className={`absolute bottom-2 left-2 z-10 flex items-center gap-1 text-xs font-bold drop-shadow-[0_1.2px_1.2px_rgba(0,0,0,0.8)] ${isHot ? 'text-orange-400' : 'text-white'}`}>
+                    {isHot ? <FireIcon /> : <EyeIcon />}
                     <span>{formatViewCount(reel.viewCount)}</span>
                 </div>
             )}
