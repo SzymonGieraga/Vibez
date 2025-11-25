@@ -134,4 +134,47 @@ public class ReelService {
                 .distinct()
                 .collect(Collectors.toList());
     }
+    @Transactional(readOnly = true)
+    public List<Reel> getFollowingReels(String username) {
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new EntityNotFoundException("User not found"));
+
+        List<User> following = user.getFollowing().stream()
+                .map(follow -> follow.getFollowing())
+                .collect(Collectors.toList());
+
+        if (following.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<Reel> rawReels = reelRepository.findByUserInOrderByIdDesc(following);
+        return processReels(rawReels);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Reel> getPopularReels() {
+        List<Reel> rawReels = reelRepository.findTop50ByOrderByLikeCountDesc();
+        return processReels(rawReels);
+    }
+
+    private List<Reel> processReels(List<Reel> rawReels) {
+        Set<Reel> uniqueReelsSet = new LinkedHashSet<>(rawReels);
+        uniqueReelsSet.forEach(this::filterTopLevelComments);
+
+        return new ArrayList<>(uniqueReelsSet);
+    }
+
+    private void filterTopLevelComments(Reel reel) {
+        if (reel.getComments() == null || reel.getComments().isEmpty()) {
+            return;
+        }
+        Map<Long, Comment> uniqueComments = new LinkedHashMap<>();
+
+        for (Comment comment : reel.getComments()) {
+            if (comment.getParentComment() == null) {
+                uniqueComments.putIfAbsent(comment.getId(), comment);
+            }
+        }
+        reel.setComments(new ArrayList<>(uniqueComments.values()));
+    }
 }

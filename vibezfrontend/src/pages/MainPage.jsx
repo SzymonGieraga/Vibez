@@ -32,10 +32,27 @@ export default function MainPage({
     const [isTogglingLike, setIsTogglingLike] = useState(false);
     const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
     const [selectedReelForPlaylist, setSelectedReelForPlaylist] = useState(null);
+    const [activeFeed, setActiveFeed] = useState('FOR_YOU');
 
     const fetchVideos = async (resetIndex = true) => {
         try {
-            const response = await apiClient('/reels');
+            let url = `/reels/feed?type=${activeFeed}`;
+
+            if (appUser?.username) {
+                url += `&username=${appUser.username}`;
+            }
+
+            const response = await apiClient(url);
+
+            if (!response.ok) {
+                if (response.status === 401 && activeFeed === 'FOLLOWING') {
+                    alert("Musisz być zalogowany i mieć profil, aby widzieć obserwowanych.");
+                    setActiveFeed('FOR_YOU');
+                    return;
+                }
+                throw new Error("Network response was not ok");
+            }
+
             const data = await response.json();
             setVideos(data);
             if (resetIndex) {
@@ -43,9 +60,21 @@ export default function MainPage({
             }
         } catch (error) {
             console.error("Błąd podczas pobierania filmów:", error);
+            setVideos([]);
         }
     };
 
+    useEffect(() => {
+        fetchVideos(true);
+        if (appUser?.username) {
+            fetchLikedReels(appUser.username);
+        }
+    }, [appUser, activeFeed]);
+
+    const handleFeedChange = (feedType) => {
+        setActiveFeed(feedType);
+        setIsNavOpen(false);
+    };
     const fetchLikedReels = async (username) => {
         if (!username) return;
         try {
@@ -117,6 +146,7 @@ export default function MainPage({
                     setCurrentVideoIndex={setCurrentVideoIndex}
                     setIsCommentsOpen={setIsCommentsOpen}
                     appUser={appUser}
+                    isCommentsOpen={isCommentsOpen}
                     likedReelIds={likedReelIds}
                     onLikeToggle={handleLikeToggle}
                     isTogglingLike={isTogglingLike}
@@ -138,6 +168,8 @@ export default function MainPage({
                 handleMarkOneAsRead={handleMarkOneAsRead}
                 totalUnreadChats={totalUnreadChats}
                 setIsChatModalOpen={setIsChatModalOpen}
+                activeFeed={activeFeed}
+                setActiveFeed={handleFeedChange}
             />
 
             <aside className={`absolute top-0 right-0 h-full w-72 bg-black/80 backdrop-blur-md border-l border-gray-800 p-6 transition-transform duration-300 z-40 ${isAsideOpen ? 'translate-x-0' : 'translate-x-full'}`}>

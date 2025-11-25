@@ -28,5 +28,24 @@ public interface ReelRepository extends JpaRepository<Reel, Long> {
             "comments.replies.user",
             "tags"})
     List<Reel> findAllByOrderByIdDesc();
+
+    @EntityGraph(attributePaths = {
+            "user",
+            "comments",
+            "comments.user",
+            "comments.replies",
+            "comments.replies.user",
+            "tags"})
+    List<Reel> findByUserInOrderByIdDesc(List<User> users);
+
+    @EntityGraph(attributePaths = {
+            "user",
+            "comments",
+            "comments.user",
+            "comments.replies",
+            "comments.replies.user",
+            "tags"})
+    List<Reel> findTop50ByOrderByLikeCountDesc();
+
 }
 

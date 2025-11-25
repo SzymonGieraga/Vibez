@@ -4,12 +4,14 @@ import com.vibez.model.Reel;
 import com.vibez.model.ReelPreview;
 import com.vibez.model.Tag;
 import com.vibez.model.User;
+import com.vibez.repository.ReelPreviewRepository;
 import com.vibez.repository.ReelRepository;
 import com.vibez.repository.UserRepository;
 import com.vibez.service.ReelService;
 import com.vibez.service.ImageStorageService;
 import com.vibez.service.VideoStorageService;
 import com.vibez.service.ReelPreviewService;
+import com.vibez.service.RecommendationService;
 import com.vibez.service.TagService;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -32,10 +34,12 @@ public class ReelController {
     private final ReelService reelService;
     private final TagService tagService;
     private final ReelPreviewService reelPreviewService;
+    private final RecommendationService recommendationService;
 
     public ReelController(ReelRepository reelRepository, UserRepository userRepository,
                           VideoStorageService videoStorageService, ImageStorageService imageStorageService,
-                          ReelService reelService, TagService tagService, ReelPreviewService reelPreviewService) {
+                          ReelService reelService, TagService tagService, ReelPreviewService reelPreviewService,
+                          RecommendationService recommendationService) {
         this.reelRepository = reelRepository;
         this.userRepository = userRepository;
         this.videoStorageService = videoStorageService;
@@ -43,6 +47,7 @@ public class ReelController {
         this.reelService = reelService;
         this.tagService = tagService;
         this.reelPreviewService = reelPreviewService;
+        this.recommendationService = recommendationService;
     }
 
     @GetMapping
@@ -173,6 +178,27 @@ public class ReelController {
             return ResponseEntity.ok(playlistNames);
         } catch (EntityNotFoundException e) {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    @GetMapping("/feed")
+    public ResponseEntity<List<Reel>> getFeed(
+            @RequestParam(required = false) String username,
+            @RequestParam(defaultValue = "FOR_YOU") String type
+    ) {
+        if ("FOLLOWING".equalsIgnoreCase(type)) {
+            if (username == null) return ResponseEntity.status(401).build();
+            return ResponseEntity.ok(reelService.getFollowingReels(username));
+        }
+        else if ("POPULAR".equalsIgnoreCase(type)) {
+            return ResponseEntity.ok(reelService.getPopularReels());
+        }
+        else {
+            if (username != null && !username.isEmpty()) {
+                return ResponseEntity.ok(recommendationService.getRecommendedReelsForUser(username));
+            } else {
+                return ResponseEntity.ok(reelService.getAllReelsWithTopLevelComments());
+            }
         }
     }
 }
