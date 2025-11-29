@@ -18,6 +18,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.OutputStream;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -147,5 +148,13 @@ public class UserController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Błąd serwera podczas zapisywania tokena: " + e.getMessage());
         }
+    }
+    @GetMapping("/search")
+    public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
+        if (query == null || query.trim().length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<User> users = userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+        return ResponseEntity.ok(users);
     }
 }

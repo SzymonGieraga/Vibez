@@ -1,9 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiClient } from '../api/apiClient';
 
 const CloseIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>);
 const SendIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>);
 const NewChatIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>);
 const KebabIcon = () => (<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z" /></svg>);
+const XIcon = () => (<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>);
+const UsersIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>);
+const PlusIcon = () => (<svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>);
 
 const AvatarPlaceholder = ({ username, className = "w-10 h-10" }) => {
     const initials = username?.substring(0, 2).toUpperCase() || '??';
@@ -48,15 +52,22 @@ export default function ChatModal({
                                       sendChatMessage,
                                       editChatMessage,
                                       deleteChatMessage,
-                                      createOrGetPrivateChat
+                                      createOrGetPrivateChat,
+                                      createGroupChat,
+                                      activeRoomId,
+                                      setActiveRoomId
                                   }) {
-    const [activeRoomId, setActiveRoomId] = useState(null);
     const [messageContent, setMessageContent] = useState("");
-    const [searchTerm, setSearchTerm] = useState("");
-    const [isCreatingChat, setIsCreatingChat] = useState(false);
+    const [isSearchMode, setIsSearchMode] = useState(false);
+    const [isGroupMode, setIsGroupMode] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
+    const [searchResults, setSearchResults] = useState([]);
+    const [selectedUsers, setSelectedUsers] = useState([]);
+    const [groupName, setGroupName] = useState("");
 
     const activeRoom = chatRooms.find(r => r.id === activeRoomId);
     const messagesEndRef = useRef(null);
+    const searchTimeoutRef = useRef(null);
 
     useEffect(() => {
         if (activeRoomId) {
@@ -74,9 +85,72 @@ export default function ChatModal({
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [chatMessages, activeRoomId]);
 
-    const handleRoomClick = (roomId) => {
-        setActiveRoomId(roomId);
-        setIsCreatingChat(false);
+    const handleSearchChange = (e) => {
+        const query = e.target.value;
+        setSearchQuery(query);
+
+        if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+
+        if (query.length < 2) {
+            setSearchResults([]);
+            return;
+        }
+
+        searchTimeoutRef.current = setTimeout(async () => {
+            try {
+                const response = await apiClient(`/users/search?query=${encodeURIComponent(query)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    const filtered = data.filter(u =>
+                        u.username !== appUser.username &&
+                        !selectedUsers.find(sel => sel.username === u.username)
+                    );
+                    setSearchResults(filtered);
+                }
+            } catch (error) {
+                console.error("Search error:", error);
+            }
+        }, 300);
+    };
+
+    const handleSelectUser = async (user) => {
+        setSearchQuery("");
+        setSearchResults([]);
+
+        if (isGroupMode) {
+            if (!selectedUsers.find(u => u.username === user.username)) {
+                setSelectedUsers(prev => [...prev, user]);
+            }
+        } else {
+            const room = await createOrGetPrivateChat(user.username);
+            if (room) {
+                setActiveRoomId(room.id);
+                setIsSearchMode(false);
+            }
+        }
+    };
+
+    const handleRemoveSelectedUser = (username) => {
+        setSelectedUsers(prev => prev.filter(u => u.username !== username));
+    };
+
+    const handleCreateGroupSubmit = async () => {
+        if (!createGroupChat) return;
+        if (selectedUsers.length === 0) return;
+
+        const usernames = selectedUsers.map(u => u.username);
+        usernames.push(appUser.username);
+
+        const name = groupName.trim() || selectedUsers.map(u => u.username).join(", ").substring(0, 30);
+
+        const newRoom = await createGroupChat(usernames, name);
+        if (newRoom) {
+            setActiveRoomId(newRoom.id);
+            setIsGroupMode(false);
+            setIsSearchMode(false);
+            setSelectedUsers([]);
+            setGroupName("");
+        }
     };
 
     const handleSendMessage = (e) => {
@@ -87,23 +161,12 @@ export default function ChatModal({
         }
     };
 
-    const handleCreateChat = async () => {
-        if (searchTerm.trim() === "" || searchTerm.trim() === appUser.username) return;
-
-        const newRoom = await createOrGetPrivateChat(searchTerm.trim());
-        if (newRoom) {
-            setActiveRoomId(newRoom.id);
-            setIsCreatingChat(false);
-            setSearchTerm("");
-        }
-    };
-
-    if (!isOpen) return null;
-
     const getPrivateChatPartner = (room) => {
         if (room.type !== 'PRIVATE' || !room.participants) return null;
         return room.participants.find(p => p.username !== appUser.username);
     };
+
+    if (!isOpen) return null;
 
     return (
         <div
@@ -111,74 +174,145 @@ export default function ChatModal({
             onClick={onClose}
         >
             <div
-                className="bg-black/50 backdrop-blur-lg w-full max-w-4xl h-[80vh] rounded-lg shadow-xl flex overflow-hidden border border-gray-700 text-white"
+                className="bg-black/50 backdrop-blur-lg w-full max-w-5xl h-[80vh] rounded-lg shadow-xl flex overflow-hidden border border-gray-700 text-white"
                 onClick={(e) => e.stopPropagation()}
             >
-                <aside className="w-1/3 border-r border-gray-700 flex flex-col bg-gray-900/50">
+                <aside className="w-1/3 min-w-[300px] border-r border-gray-700 flex flex-col bg-gray-900/50 relative">
                     <header className="p-4 border-b border-gray-700 flex justify-between items-center">
                         <h2 className="text-xl font-semibold">{appUser.username}</h2>
                         <button
-                            onClick={() => setIsCreatingChat(true)}
-                            className="p-1 text-gray-400 hover:text-white"
+                            onClick={() => {
+                                setIsSearchMode(!isSearchMode);
+                                if (!isSearchMode) setTimeout(() => document.getElementById('search-input')?.focus(), 100);
+                            }}
+                            className={`p-1 rounded transition-colors ${isSearchMode ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
                             title="Nowa wiadomość"
                         >
                             <NewChatIcon />
                         </button>
                     </header>
 
-                    <div className="flex-1 overflow-y-auto">
-                        {isCreatingChat ? (
-                            <div className="p-4">
-                                <h3 className="text-gray-300 mb-2">Do kogo:</h3>
+                    {isSearchMode && (
+                        <div className="p-3 bg-gray-800/30 border-b border-gray-700">
+                            <div className="flex items-center space-x-2 mb-2">
+                                <input
+                                    id="search-input"
+                                    type="text"
+                                    value={searchQuery}
+                                    onChange={handleSearchChange}
+                                    placeholder="Szukaj osoby..."
+                                    className="flex-1 p-2 bg-gray-800 border border-gray-600 rounded text-sm text-white outline-none"
+                                />
+                                {isGroupMode && (
+                                    <button
+                                        onClick={handleCreateGroupSubmit}
+                                        disabled={selectedUsers.length === 0}
+                                        className="bg-blue-600 text-white text-xs px-3 py-2 rounded hover:bg-blue-500 disabled:opacity-50"
+                                    >
+                                        Utwórz
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="flex items-center justify-between mb-2">
+                                <label className="flex items-center text-xs text-gray-400 cursor-pointer select-none">
+                                    <input
+                                        type="checkbox"
+                                        checked={isGroupMode}
+                                        onChange={(e) => setIsGroupMode(e.target.checked)}
+                                        className="mr-2 rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-0"
+                                    />
+                                    Tryb grupowy
+                                </label>
+                            </div>
+
+                            {isGroupMode && selectedUsers.length > 0 && (
+                                <div className="flex flex-wrap gap-2 mb-2 p-2 bg-gray-800/50 rounded border border-gray-700">
+                                    {selectedUsers.map(u => (
+                                        <span key={u.username} className="bg-blue-900 text-blue-200 text-xs px-2 py-1 rounded-full flex items-center">
+                                            {u.username}
+                                            <button onClick={() => handleRemoveSelectedUser(u.username)} className="ml-1 hover:text-white"><XIcon /></button>
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
+
+                            {isGroupMode && selectedUsers.length > 0 && (
                                 <input
                                     type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Wpisz nazwę użytkownika..."
-                                    className="w-full p-2 bg-gray-800 border border-gray-700 rounded-md outline-none text-white"
+                                    value={groupName}
+                                    onChange={(e) => setGroupName(e.target.value)}
+                                    placeholder="Nazwa grupy (opcjonalnie)"
+                                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded text-xs text-white mb-2"
                                 />
-                                <button
-                                    onClick={handleCreateChat}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 rounded-md p-2 mt-3"
-                                >
-                                    Rozpocznij czat
-                                </button>
-                            </div>
-                        ) : (
-                            <ul>
-                                {chatRooms.map(room => {
-                                    const partner = getPrivateChatPartner(room);
-                                    const roomName = room.type === 'GROUP' ? room.name : (partner?.username || 'Czat prywatny');
-                                    const roomPic = room.type === 'PRIVATE' ? partner?.profilePictureUrl : null;
-                                    const unreadCount = unreadMessages[room.id] || 0;
+                            )}
+                        </div>
+                    )}
 
-                                    return (
-                                        <li
-                                            key={room.id}
-                                            onClick={() => handleRoomClick(room.id)}
-                                            className={`flex items-center space-x-3 p-3 cursor-pointer hover:bg-gray-800 ${activeRoomId === room.id ? 'bg-gray-700' : ''}`}
-                                        >
-                                            {roomPic ? (
-                                                <img src={roomPic} alt={roomName} className="w-12 h-12 rounded-full flex-shrink-0" />
+                    {searchQuery.length >= 2 && searchResults.length > 0 && (
+                        <div className="absolute top-[130px] left-0 right-0 z-20 bg-gray-800 border-y border-gray-600 shadow-xl max-h-60 overflow-y-auto">
+                            {searchResults.map(user => (
+                                <div
+                                    key={user.username}
+                                    onClick={() => handleSelectUser(user)}
+                                    className="flex items-center p-3 hover:bg-gray-700 cursor-pointer border-b border-gray-700 last:border-0"
+                                >
+                                    <AvatarPlaceholder username={user.username} className="w-8 h-8 mr-3" />
+                                    <div className="flex-1">
+                                        <p className="font-semibold text-sm">{user.username}</p>
+                                        <p className="text-xs text-gray-400">{user.email}</p>
+                                    </div>
+                                    {isGroupMode && <PlusIcon />}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    <div className="flex-1 overflow-y-auto relative z-10">
+                        <ul>
+                            {chatRooms.map(room => {
+                                const partner = getPrivateChatPartner(room);
+                                const roomName = room.type === 'GROUP' ? room.name : (partner?.username || 'Czat prywatny');
+                                const roomPic = room.type === 'PRIVATE' ? partner?.profilePictureUrl : null;
+                                const unreadCount = unreadMessages[room.id] || 0;
+
+                                return (
+                                    <li
+                                        key={room.id}
+                                        onClick={() => { setActiveRoomId(room.id); setIsSearchMode(false); }}
+                                        className={`flex items-center space-x-3 p-3 cursor-pointer hover:bg-gray-800 ${activeRoomId === room.id ? 'bg-gray-700' : ''}`}
+                                    >
+                                        {roomPic ? (
+                                            <img src={roomPic} alt={roomName} className="w-12 h-12 rounded-full flex-shrink-0" />
+                                        ) : (
+                                            room.type === 'GROUP' ? (
+                                                <div className="w-12 h-12 rounded-full bg-gray-700 flex items-center justify-center text-gray-300">
+                                                    <UsersIcon />
+                                                </div>
                                             ) : (
                                                 <AvatarPlaceholder username={roomName} className="w-12 h-12" />
-                                            )}
-                                            <div className="flex-1 min-w-0">
-                                                <p className="font-semibold truncate">{roomName}</p>
-                                                <p className="text-sm text-gray-400 truncate">
-                                                    {room.lastMessage?.content || "Rozpocznij konwersację"}
-                                                </p>
-                                            </div>
-                                            {unreadCount > 0 && (
-                                                <span className="bg-blue-500 text-white text-xs font-bold rounded-full px-2 py-1">
-                                                    {unreadCount}
-                                                </span>
-                                            )}
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
+                                            )
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-semibold truncate">{roomName}</p>
+                                            <p className="text-sm text-gray-400 truncate">
+                                                {room.lastMessage ? (
+                                                    <>
+                                                        {room.type === 'GROUP' && <span className="text-blue-400 mr-1">{room.lastMessage.sender.username}:</span>}
+                                                        {room.lastMessage.content}
+                                                    </>
+                                                ) : "Rozpocznij konwersację"}
+                                            </p>
+                                        </div>
+                                        {unreadCount > 0 && (
+                                            <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-1">
+                                                {unreadCount}
+                                            </span>
+                                        )}
+                                    </li>
+                                );
+                            })}
+                        </ul>
                     </div>
                 </aside>
 
@@ -186,9 +320,22 @@ export default function ChatModal({
                     {activeRoom ? (
                         <>
                             <header className="p-4 border-b border-gray-700 flex justify-between items-center">
-                                <h2 className="text-xl font-semibold">
-                                    {activeRoom.type === 'GROUP' ? activeRoom.name : getPrivateChatPartner(activeRoom)?.username}
-                                </h2>
+                                <div className="flex items-center gap-3">
+                                    {activeRoom.type === 'PRIVATE' ? (
+                                        getPrivateChatPartner(activeRoom)?.profilePictureUrl ? (
+                                            <img src={getPrivateChatPartner(activeRoom).profilePictureUrl} className="w-8 h-8 rounded-full" />
+                                        ) : (
+                                            <AvatarPlaceholder username={getPrivateChatPartner(activeRoom)?.username} className="w-8 h-8" />
+                                        )
+                                    ) : (
+                                        <div className="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-300">
+                                            <UsersIcon />
+                                        </div>
+                                    )}
+                                    <h2 className="text-xl font-semibold">
+                                        {activeRoom.type === 'GROUP' ? activeRoom.name : getPrivateChatPartner(activeRoom)?.username}
+                                    </h2>
+                                </div>
                                 <button onClick={onClose} className="text-gray-400 hover:text-white">
                                     <CloseIcon />
                                 </button>
@@ -209,6 +356,8 @@ export default function ChatModal({
                                         nextMsg.sender.username !== msg.sender.username ||
                                         nextWillBreakSequence;
 
+                                    const isFirstFromSender = !prevMsg || prevMsg.sender.username !== msg.sender.username || showTimestamp;
+
                                     return (
                                         <React.Fragment key={msg.id}>
                                             {showTimestamp && <TimestampDivider timestamp={msg.timestamp} />}
@@ -218,6 +367,7 @@ export default function ChatModal({
                                                 onEdit={editChatMessage}
                                                 onDelete={deleteChatMessage}
                                                 showAvatar={showAvatar}
+                                                showNickname={isFirstFromSender && activeRoom.type === 'GROUP'}
                                             />
                                         </React.Fragment>
                                     );
@@ -233,15 +383,12 @@ export default function ChatModal({
                                         onChange={(e) => setMessageContent(e.target.value)}
                                         placeholder="Napisz wiadomość..."
                                         className="flex-1 p-3 bg-gray-800 border border-gray-700 rounded-full outline-none text-white"
-                                        maxLength={100}
+                                        maxLength={500}
                                     />
                                     <button type="submit" className="p-3 bg-blue-600 rounded-full text-white hover:bg-blue-700">
                                         <SendIcon />
                                     </button>
                                 </div>
-                                <p className="text-xs text-gray-400 text-right pr-4 mt-1">
-                                    {messageContent.length} / 100
-                                </p>
                             </form>
                         </>
                     ) : (
@@ -259,7 +406,7 @@ export default function ChatModal({
     );
 }
 
-function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar }) {
+function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickname }) {
     const sender = message.sender;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -331,44 +478,50 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar }) {
                 </div>
             )}
 
-            <div className={`p-3 rounded-2xl max-w-xs lg:max-w-md ${isMe ? 'bg-gray-800 rounded-br-lg text-white' : 'bg-gray-700 rounded-bl-lg text-white'} ${isDeleted ? 'bg-gray-600/50 italic text-gray-400' : ''}`}>
-
-                {message.reel && !isDeleted && (
-                    <div className="bg-gray-900 p-2 rounded-lg mb-2">
-                        <img src={message.reel.thumbnailUrl} alt="Reel" className="w-full rounded-md" />
-                        <p className="mt-1 text-sm font-semibold">{message.reel.songTitle}</p>
-                        <p className="text-xs text-gray-400">{message.reel.author}</p>
-                    </div>
+            <div className="flex flex-col max-w-xs lg:max-w-md">
+                {!isMe && showNickname && (
+                    <span className="text-[10px] text-gray-400 ml-1 mb-1 font-bold">{sender.username}</span>
                 )}
 
-                {isEditing ? (
-                    <div className="flex flex-col space-y-2 min-w-[200px]">
-                        <textarea
-                            value={editContent}
-                            onChange={(e) => setEditContent(e.target.value)}
-                            className="w-full p-2 bg-gray-900 text-white border border-gray-600 rounded text-sm outline-none resize-none"
-                            rows={2}
-                        />
-                        <div className="flex justify-end space-x-2 text-xs">
-                            <button onClick={handleCancelEdit} className="text-gray-400 hover:text-white">Anuluj</button>
-                            <button onClick={handleSaveEdit} className="text-blue-400 hover:text-blue-300 font-semibold">Zapisz</button>
+                <div className={`p-3 rounded-2xl w-full ${isMe ? 'bg-gray-800 rounded-br-lg text-white' : 'bg-gray-700 rounded-bl-lg text-white'} ${isDeleted ? 'bg-gray-600/50 italic text-gray-400' : ''}`}>
+
+                    {message.reel && !isDeleted && (
+                        <div className="bg-gray-900 p-2 rounded-lg mb-2">
+                            <img src={message.reel.thumbnailUrl} alt="Reel" className="w-full rounded-md" />
+                            <p className="mt-1 text-sm font-semibold">{message.reel.songTitle}</p>
+                            <p className="text-xs text-gray-400">{message.reel.author}</p>
                         </div>
-                    </div>
-                ) : (
-                    <>
-                        {isDeleted ? (
-                            <p className="text-sm select-none">Wiadomość usunięta</p>
-                        ) : (
-                            <p className="break-words whitespace-pre-wrap">
-                                {message.content}
-                            </p>
-                        )}
+                    )}
 
-                        {!isDeleted && message.edited && (
-                            <span className="text-xs text-gray-400 mt-1 block text-right">(Edytowano)</span>
-                        )}
-                    </>
-                )}
+                    {isEditing ? (
+                        <div className="flex flex-col space-y-2 min-w-[200px]">
+                            <textarea
+                                value={editContent}
+                                onChange={(e) => setEditContent(e.target.value)}
+                                className="w-full p-2 bg-gray-900 text-white border border-gray-600 rounded text-sm outline-none resize-none"
+                                rows={2}
+                            />
+                            <div className="flex justify-end space-x-2 text-xs">
+                                <button onClick={handleCancelEdit} className="text-gray-400 hover:text-white">Anuluj</button>
+                                <button onClick={handleSaveEdit} className="text-blue-400 hover:text-blue-300 font-semibold">Zapisz</button>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
+                            {isDeleted ? (
+                                <p className="text-sm select-none">Wiadomość usunięta</p>
+                            ) : (
+                                <p className="break-words whitespace-pre-wrap">
+                                    {message.content}
+                                </p>
+                            )}
+
+                            {!isDeleted && message.edited && (
+                                <span className="text-xs text-gray-400 mt-1 block text-right">(Edytowano)</span>
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
         </div>
     );

@@ -3,6 +3,7 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { setupNotifications } from './firebaseMessaging';
+import { apiClient } from './api/apiClient.js';
 
 import { Stomp } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
@@ -46,11 +47,19 @@ function App() {
     const [toast, setToast] = useState(null);
     const [isMarkingAsRead, setIsMarkingAsRead] = useState(false);
 
+    const [activeChatRoomId, setActiveChatRoomId] = useState(null);
+
+
     const totalUnreadChats = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
+
+    const openChatWithRoom = (roomId) => {
+        setActiveChatRoomId(roomId);
+        setIsChatModalOpen(true);
+    };
 
     const fetchNotifications = async (token) => {
         try {
-            const response = await fetch('http://localhost:8080/api/notifications', {
+            const response = await apiClient ('/notifications', {
                 headers: { 'Authorization': `Bearer ${token}` },
                 cache: 'no-store'
             });
@@ -67,7 +76,7 @@ function App() {
         if (!user) return;
         try {
             const token = await user.getIdToken();
-            const response = await fetch('http://localhost:8080/api/notifications/read-all', {
+            const response = await apiClient('/notifications/read-all', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
             });
@@ -87,7 +96,7 @@ function App() {
 
         try {
             const token = await user.getIdToken();
-            const response = await fetch(`http://localhost:8080/api/notifications/${notification.id}/read`, {
+            const response = await apiClient('/notifications/${notification.id}/read', {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -268,6 +277,36 @@ function App() {
         }
     };
 
+    const createGroupChat = async (participantUsernames, name) => {
+        if (!user) return null;
+
+        try {
+            const token = await user.getIdToken();
+
+            const response = await apiClient('/chats/group', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    name: name,
+                    participantUsernames: participantUsernames
+                })
+            });
+
+            if (response.ok) {
+                const newRoom = await response.json();
+                setChatRooms(prev => [newRoom, ...prev]);
+                return newRoom;
+            } else {
+                console.error("Błąd tworzenia grupy", await response.text());
+            }
+        } catch (error) {
+            console.error("Network error:", error);
+        }
+        return null;
+    };
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
             if (currentUser) {
@@ -341,6 +380,8 @@ function App() {
                         handleMarkAllAsRead={handleMarkAllAsRead}
                         totalUnreadChats={totalUnreadChats}
                         setIsChatModalOpen={setIsChatModalOpen}
+                        openChat={openChatWithRoom}
+                        createOrGetPrivateChat={createOrGetPrivateChat}
                     /> : <Navigate to="/auth" />}
                 />
                 <Route
@@ -373,6 +414,9 @@ function App() {
                 editChatMessage={editChatMessage}
                 deleteChatMessage={deleteChatMessage}
                 createOrGetPrivateChat={createOrGetPrivateChat}
+                activeRoomId={activeChatRoomId}
+                setActiveRoomId={setActiveChatRoomId}
+                createGroupChat={createGroupChat}
             />
         </>
     );

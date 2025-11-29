@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { apiClient } from '../api/apiClient'; // Upewnij się, że masz import apiClient
+import { apiClient } from '../api/apiClient';
 
-// Ikony specyficzne dla odtwarzacza
 const MuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l4-4m0 4l-4-4" /></svg> );
 const UnmuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-1.464a5 5 0 010-7.072" /></svg> );
 const PlayIcon = () => ( <svg className="w-20 h-20 text-white opacity-70" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" /></svg> );
@@ -45,14 +44,12 @@ export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOp
         };
     }, [currentVideoIndex, volume, videos]);
 
-    // Obsługa zliczania wyświetleń
     useEffect(() => {
         viewCountedRef.current = false;
 
         const videoId = videos[currentVideoIndex]?.id;
         if (!videoId) return;
 
-        // Zalicz wyświetlenie dopiero po 2 sekundach oglądania, aby uniknąć spamu przy szybkim przewijaniu
         const timer = setTimeout(() => {
             if (!viewCountedRef.current) {
                 apiClient(`/reels/${videoId}/view`, { method: 'POST' })

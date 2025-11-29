@@ -10,6 +10,7 @@ import { apiClient } from '../api/apiClient';
 
 const EditIcon = () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>;
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
+const MessageIcon = () => (<svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>);
 
 const GridIcon = () => (
     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -39,7 +40,9 @@ export default function ProfilePage({
                                         handleMarkAllAsRead,
                                         handleMarkOneAsRead,
                                         totalUnreadChats,
-                                        setIsChatModalOpen
+                                        setIsChatModalOpen,
+                                        createOrGetPrivateChat,
+                                        openChat
                                     }) {
     const { username } = useParams();
     const [profile, setProfile] = useState(null);
@@ -59,6 +62,7 @@ export default function ProfilePage({
     const [followStats, setFollowStats] = useState({ followers: 0, following: 0 });
     const [isFollowing, setIsFollowing] = useState(false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
+    const [isChatLoading, setIsChatLoading] = useState(false);
 
     const [followModal, setFollowModal] = useState({
         isOpen: false,
@@ -198,10 +202,7 @@ export default function ProfilePage({
     };
 
     const handleToggleFollow = async () => {
-        if (!appUser) {
-            console.error("User not logged in");
-            return;
-        }
+        if (!appUser) return;
         setIsFollowLoading(true);
         try {
             const res = await apiClient(`/follows/toggle?followerUsername=${appUser.username}&followingUsername=${profile.username}`, {
@@ -212,14 +213,26 @@ export default function ProfilePage({
                 const data = await res.json();
                 setIsFollowing(data.isFollowing);
                 fetchFollowStats(profile.username);
-            } else {
-                const errData = await res.json();
-                console.error("Failed to toggle follow:", errData.error);
             }
         } catch (error) {
             console.error("Error toggling follow:", error);
         } finally {
             setIsFollowLoading(false);
+        }
+    };
+
+    const handleMessageClick = async () => {
+        if (!appUser || !profile) return;
+        setIsChatLoading(true);
+        try {
+            const room = await createOrGetPrivateChat(profile.username);
+            if (room) {
+                openChat(room.id);
+            }
+        } catch (error) {
+            console.error("Error creating chat:", error);
+        } finally {
+            setIsChatLoading(false);
         }
     };
 
@@ -281,26 +294,36 @@ export default function ProfilePage({
                                     </div>
                                 </div>
 
-                                <div className="mt-4 sm:mt-0">
+                                <div className="mt-4 sm:mt-0 flex gap-2 justify-center sm:justify-start">
                                     {isOwnProfile ? (
                                         <button
                                             onClick={() => setIsEditModalOpen(true)}
-                                            className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center mx-auto sm:mx-0"
+                                            className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center"
                                         >
                                             <EditIcon /> Edit Profile
                                         </button>
                                     ) : (
-                                        <button
-                                            onClick={handleToggleFollow}
-                                            disabled={isFollowLoading || !appUser}
-                                            className={`text-sm font-semibold py-2 px-6 rounded-lg ${
-                                                isFollowing
-                                                    ? 'bg-gray-800 hover:bg-gray-700 text-white'
-                                                    : 'bg-white hover:bg-gray-200 text-black'
-                                            } disabled:opacity-50 mx-auto sm:mx-0 transition-colors`}
-                                        >
-                                            {isFollowLoading ? '...' : (isFollowing ? 'Following' : 'Follow')}
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={handleToggleFollow}
+                                                disabled={isFollowLoading || !appUser}
+                                                className={`text-sm font-semibold py-2 px-6 rounded-lg ${
+                                                    isFollowing
+                                                        ? 'bg-gray-800 hover:bg-gray-700 text-white'
+                                                        : 'bg-white hover:bg-gray-200 text-black'
+                                                } disabled:opacity-50 transition-colors`}
+                                            >
+                                                {isFollowLoading ? '...' : (isFollowing ? 'Following' : 'Follow')}
+                                            </button>
+
+                                            <button
+                                                onClick={handleMessageClick}
+                                                disabled={isChatLoading || !appUser}
+                                                className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center disabled:opacity-50"
+                                            >
+                                                <MessageIcon /> {isChatLoading ? '...' : 'Wiadomość'}
+                                            </button>
+                                        </>
                                     )}
                                 </div>
 

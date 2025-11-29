@@ -77,7 +77,7 @@ public class ReelService {
                 .collect(Collectors.toList());
     }
     public List<Reel> getAllReelsWithTopLevelComments() {
-        List<Reel> reels = reelRepository.findAllByOrderByIdDesc();
+        List<Reel> reels = reelRepository.findAllByOrderByCreatedAtDesc();
 
         for (Reel reel : reels) {
             if (reel.getComments() != null) {
