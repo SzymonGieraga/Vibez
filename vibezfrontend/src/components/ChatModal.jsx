@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiClient } from '../api/apiClient';
+import ReelPreview from './ReelPreview';
+
+const scrollbarStyles = `
+    .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: #000; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #374151; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #4b5563; }
+`;
 
 const CloseIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>);
 const SendIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>);
@@ -68,6 +76,7 @@ export default function ChatModal({
     const activeRoom = chatRooms.find(r => r.id === activeRoomId);
     const messagesEndRef = useRef(null);
     const searchTimeoutRef = useRef(null);
+    const prevRoomIdRef = useRef(null);
 
     useEffect(() => {
         if (activeRoomId) {
@@ -82,7 +91,13 @@ export default function ChatModal({
     }, [activeRoomId]);
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        if (messagesEndRef.current) {
+            const isRoomChange = prevRoomIdRef.current !== activeRoomId;
+            const behavior = isRoomChange ? "auto" : "smooth";
+
+            messagesEndRef.current.scrollIntoView({ behavior });
+            prevRoomIdRef.current = activeRoomId;
+        }
     }, [chatMessages, activeRoomId]);
 
     const handleSearchChange = (e) => {
@@ -173,6 +188,8 @@ export default function ChatModal({
             className="fixed inset-0 bg-black/50 backdrop-blur-md z-40 flex items-center justify-center"
             onClick={onClose}
         >
+            <style>{scrollbarStyles}</style>
+
             <div
                 className="bg-black/50 backdrop-blur-lg w-full max-w-5xl h-[80vh] rounded-lg shadow-xl flex overflow-hidden border border-gray-700 text-white"
                 onClick={(e) => e.stopPropagation()}
@@ -250,7 +267,7 @@ export default function ChatModal({
                     )}
 
                     {searchQuery.length >= 2 && searchResults.length > 0 && (
-                        <div className="absolute top-[130px] left-0 right-0 z-20 bg-gray-800 border-y border-gray-600 shadow-xl max-h-60 overflow-y-auto">
+                        <div className="absolute top-[130px] left-0 right-0 z-20 bg-gray-800 border-y border-gray-600 shadow-xl max-h-60 overflow-y-auto custom-scrollbar">
                             {searchResults.map(user => (
                                 <div
                                     key={user.username}
@@ -268,7 +285,7 @@ export default function ChatModal({
                         </div>
                     )}
 
-                    <div className="flex-1 overflow-y-auto relative z-10">
+                    <div className="flex-1 overflow-y-auto relative z-10 custom-scrollbar">
                         <ul>
                             {chatRooms.map(room => {
                                 const partner = getPrivateChatPartner(room);
@@ -341,7 +358,7 @@ export default function ChatModal({
                                 </button>
                             </header>
 
-                            <div className="flex-1 p-4 overflow-y-auto space-y-2">
+                            <div className="flex-1 p-4 overflow-y-auto space-y-2 custom-scrollbar">
                                 {(chatMessages[activeRoomId] || []).map((msg, index) => {
                                     const currentMessages = chatMessages[activeRoomId] || [];
                                     const prevMsg = currentMessages[index - 1];
@@ -486,10 +503,8 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
                 <div className={`p-3 rounded-2xl w-full ${isMe ? 'bg-gray-800 rounded-br-lg text-white' : 'bg-gray-700 rounded-bl-lg text-white'} ${isDeleted ? 'bg-gray-600/50 italic text-gray-400' : ''}`}>
 
                     {message.reel && !isDeleted && (
-                        <div className="bg-gray-900 p-2 rounded-lg mb-2">
-                            <img src={message.reel.thumbnailUrl} alt="Reel" className="w-full rounded-md" />
-                            <p className="mt-1 text-sm font-semibold">{message.reel.songTitle}</p>
-                            <p className="text-xs text-gray-400">{message.reel.author}</p>
+                        <div className="mb-2 w-48 sm:w-56 overflow-hidden rounded-lg border border-gray-600/30">
+                            <ReelPreview reel={message.reel} />
                         </div>
                     )}
 

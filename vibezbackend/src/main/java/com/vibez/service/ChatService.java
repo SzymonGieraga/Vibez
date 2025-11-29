@@ -249,4 +249,15 @@ public class ChatService {
 
         return new ChatRoomDto(room, lastMessageDto);
     }
+
+    public void notifyNewMessage(UUID chatRoomId, ChatMessageDto messageDto) {
+        List<User> participants = getChatParticipants(chatRoomId);
+        for (User participant : participants) {
+            messagingTemplate.convertAndSendToUser(
+                    participant.getUsername(),
+                    "/queue/chat-messages",
+                    messageDto
+            );
+        }
+    }
 }

@@ -4,6 +4,7 @@ import AddReelModal from '../components/AddReelModal.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
 import CommentsPanel from '../components/CommentsPanel.jsx';
 import AddToPlaylistModal from '../components/AddToPlaylistModal.jsx';
+import ShareReelModal from '../components/modals/ShareReelModal.jsx';
 import { apiClient } from '../api/apiClient';
 
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
@@ -31,6 +32,9 @@ export default function MainPage({
     const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
     const [selectedReelForPlaylist, setSelectedReelForPlaylist] = useState(null);
     const [activeFeed, setActiveFeed] = useState('FOR_YOU');
+
+    const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+    const [reelToShare, setReelToShare] = useState(null);
 
     const fetchVideos = async (resetIndex = true) => {
         try {
@@ -133,6 +137,16 @@ export default function MainPage({
         setSelectedReelForPlaylist(null);
     };
 
+    const handleOpenShareModal = (reel) => {
+        setReelToShare(reel);
+        setIsShareModalOpen(true);
+    };
+
+    const handleCloseShareModal = () => {
+        setIsShareModalOpen(false);
+        setReelToShare(null);
+    };
+
     return (
         <div className="w-screen h-screen bg-black text-white relative overflow-hidden">
             <main className="w-full h-full">
@@ -149,6 +163,7 @@ export default function MainPage({
                     onLikeToggle={handleLikeToggle}
                     isTogglingLike={isTogglingLike}
                     onOpenPlaylistModal={handleOpenPlaylistModal}
+                    onShare={handleOpenShareModal}
                 />
             </main>
 
@@ -183,6 +198,15 @@ export default function MainPage({
                     reelToAdd={selectedReelForPlaylist}
                     appUser={appUser}
                     onClose={handleClosePlaylistModal}
+                />
+            )}
+            {isShareModalOpen && reelToShare && (
+                <ShareReelModal
+                    isOpen={isShareModalOpen}
+                    onClose={handleCloseShareModal}
+                    reel={reelToShare}
+                    appUser={appUser}
+                    user={user}
                 />
             )}
         </div>

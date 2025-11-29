@@ -2,6 +2,7 @@ package com.vibez.controller;
 
 import com.vibez.dto.ChatMessageDto;
 import com.vibez.dto.ChatRoomDto;
+import com.vibez.model.ChatMessage;
 import com.vibez.model.User;
 import com.vibez.repository.UserRepository;
 import com.vibez.service.ChatService;
@@ -116,5 +117,36 @@ public class ChatRestController {
         }
         return userRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Nie znaleziono użytkownika: " + username));
+    }
+    @PostMapping("/{chatId}/messages")
+    public ResponseEntity<ChatMessageDto> sendMessage(
+            @PathVariable UUID chatId,
+            @RequestBody SendMessageRequestDto request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        User currentUser = getCurrentUser(userDetails);
+
+        ChatMessage savedMessage = chatService.saveMessage(
+                chatId,
+                currentUser,
+                request.getContent(),
+                request.getReelId()
+        );
+
+        ChatMessageDto messageDto = new ChatMessageDto(savedMessage);
+
+        chatService.notifyNewMessage(chatId, messageDto);
+
+        return ResponseEntity.ok(messageDto);
+    }
+
+    static class SendMessageRequestDto {
+        private String content;
+        private Long reelId;
+
+        public String getContent() { return content; }
+        public void setContent(String content) { this.content = content; }
+        public Long getReelId() { return reelId; }
+        public void setReelId(Long reelId) { this.reelId = reelId; }
     }
 }

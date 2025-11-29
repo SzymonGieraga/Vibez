@@ -7,10 +7,24 @@ const PlayIcon = () => ( <svg className="w-20 h-20 text-white opacity-70" fill="
 const HeartIcon = ({ isLiked }) => ( <svg className={`w-8 h-8 ${isLiked ? 'text-red-500' : ''}`} fill={isLiked ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4.318 6.318a4.5 4.5 0 016.364 0L12 7.636l1.318-1.318a4.5 4.5 0 116.364 6.364L12 20.364l-7.682-7.682a4.5 4.5 0 010-6.364z" /></svg> );
 const CommentIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" /></svg>;
 const BookmarkIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>;
+const ShareIcon = () => (<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 9l-5 5-5-5M12 12.8V2.5" /></svg>);
 const EyeIcon = () => ( <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> );
 
-
-export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOpen, isCommentsOpen, appUser, likedReelIds, onLikeToggle, isTogglingLike, currentVideoIndex, setCurrentVideoIndex, onOpenPlaylistModal }) {
+export default function VideoPlayer({
+                                        videos,
+                                        volume,
+                                        setVolume,
+                                        setIsCommentsOpen,
+                                        isCommentsOpen,
+                                        appUser,
+                                        likedReelIds,
+                                        onLikeToggle,
+                                        isTogglingLike,
+                                        currentVideoIndex,
+                                        setCurrentVideoIndex,
+                                        onOpenPlaylistModal,
+                                        onShare
+                                    }) {
     const [isPlaying, setIsPlaying] = useState(true);
     const [progress, setProgress] = useState(0);
     const [isDetailsVisible, setIsDetailsVisible] = useState(false);
@@ -149,6 +163,13 @@ export default function VideoPlayer({ videos, volume, setVolume, setIsCommentsOp
                                 onOpenPlaylistModal(currentVideo);
                             }}
                         />
+                        <InteractionButton
+                            icon={<ShareIcon />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onShare) onShare(currentVideo);
+                            }}
+                        />
                     </div>
                     <div ref={progressRef} onClick={handleSeek} className="w-full bg-gray-500 bg-opacity-50 h-1.5 rounded-full mt-2 cursor-pointer">
                         <div style={{ width: `${progress}%` }} className="h-full bg-white rounded-full"></div>
@@ -174,7 +195,7 @@ const InteractionButton = ({ icon, count, onClick, disabled = false }) => (
             disabled={disabled}>
             {icon}
         </button>
-        <span className="text-xs font-semibold mt-1">{count}</span>
+        {count !== undefined && <span className="text-xs font-semibold mt-1">{count}</span>}
     </div>
 );
 
