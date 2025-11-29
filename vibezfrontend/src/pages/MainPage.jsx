@@ -5,9 +5,11 @@ import VideoPlayer from '../components/VideoPlayer.jsx';
 import CommentsPanel from '../components/CommentsPanel.jsx';
 import AddToPlaylistModal from '../components/AddToPlaylistModal.jsx';
 import ShareReelModal from '../components/modals/ShareReelModal.jsx';
+import SearchPanel from '../components/SearchPanel.jsx';
 import { apiClient } from '../api/apiClient';
 
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
+const SearchIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> );
 
 export default function MainPage({
                                      user,
@@ -23,6 +25,7 @@ export default function MainPage({
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isAsideOpen, setIsAsideOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
     const [videos, setVideos] = useState([]);
     const [volume, setVolume] = useState(0);
     const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
@@ -77,6 +80,7 @@ export default function MainPage({
         setActiveFeed(feedType);
         setIsNavOpen(false);
     };
+
     const fetchLikedReels = async (username) => {
         if (!username) return;
         try {
@@ -167,7 +171,26 @@ export default function MainPage({
                 />
             </main>
 
-            <div className="absolute top-4 left-4 z-30"><button onClick={() => setIsNavOpen(true)} className="p-2 bg-black/30 rounded-full hover:bg-black/50"><MenuIcon /></button></div>
+            <div className="absolute top-4 left-4 z-30 flex items-center gap-3">
+                <button
+                    onClick={() => setIsNavOpen(true)}
+                    className="p-2 bg-black/30 rounded-full hover:bg-black/50 backdrop-blur-sm transition-colors"
+                >
+                    <MenuIcon />
+                </button>
+
+                <button
+                    onClick={() => setIsSearchOpen(true)}
+                    className="p-2 bg-black/30 rounded-full hover:bg-black/50 backdrop-blur-sm transition-colors"
+                >
+                    <SearchIcon />
+                </button>
+            </div>
+
+            <SearchPanel
+                isOpen={isSearchOpen}
+                onClose={() => setIsSearchOpen(false)}
+            />
 
             <NavigationPanel
                 user={user}
@@ -184,7 +207,17 @@ export default function MainPage({
                 setActiveFeed={handleFeedChange}
             />
 
-            {(isNavOpen || isAsideOpen) && (<div className="absolute inset-0 bg-black/30 z-20" onClick={() => { setIsNavOpen(false); setIsAsideOpen(false); }} />)}
+            {(isNavOpen || isAsideOpen || isSearchOpen) && (
+                <div
+                    className="absolute inset-0 bg-black/30 z-20"
+                    onClick={() => {
+                        setIsNavOpen(false);
+                        setIsAsideOpen(false);
+                        setIsSearchOpen(false);
+                    }}
+                />
+            )}
+
             {isModalOpen && <AddReelModal user={appUser} onClose={() => setIsModalOpen(false)} onReelAdded={fetchVideos} />}
             <CommentsPanel
                 isOpen={isCommentsOpen}

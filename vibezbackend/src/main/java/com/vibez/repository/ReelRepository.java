@@ -47,5 +47,8 @@ public interface ReelRepository extends JpaRepository<Reel, Long> {
             "tags"})
     List<Reel> findTop50ByOrderByLikeCountDesc();
 
+    List<Reel> findByDescriptionContainingIgnoreCase(String description);
+
+    List<Reel> findByTags_NameContainingIgnoreCase(String tagName);
 }
 
