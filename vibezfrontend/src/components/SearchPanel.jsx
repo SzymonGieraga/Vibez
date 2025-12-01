@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
 import ReelPreview from './ReelPreview';
 
@@ -7,16 +8,17 @@ const SearchIcon = () => ( <svg className="w-5 h-5 text-gray-400" fill="none" st
 const PlaceholderUserIcon = () => ( <svg className="w-8 h-8 text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" /></svg> );
 
 export default function SearchPanel({ isOpen, onClose }) {
+    const { t } = useTranslation();
     const [query, setQuery] = useState('');
     const [activeTab, setActiveTab] = useState('top');
     const [results, setResults] = useState([]);
     const [isLoading, setIsLoading] = useState(false);
 
     const tabs = [
-        { id: 'top', label: 'Top' },
-        { id: 'users', label: 'Użytkownicy' },
-        { id: 'videos', label: 'Wideo' },
-        { id: 'tags', label: 'Tagi' },
+        { id: 'top', label: t('tabTop') },
+        { id: 'users', label: t('tabUsers') },
+        { id: 'videos', label: t('tabVideos') },
+        { id: 'tags', label: t('tabTags') },
     ];
 
     useEffect(() => {
@@ -61,7 +63,7 @@ export default function SearchPanel({ isOpen, onClose }) {
             }
         };
 
-       const timeoutId = setTimeout(() => {
+        const timeoutId = setTimeout(() => {
             fetchResults();
         }, 500);
 
@@ -98,7 +100,7 @@ export default function SearchPanel({ isOpen, onClose }) {
         </div>
     );
 
-   const renderReelGrid = () => (
+    const renderReelGrid = () => (
         <div className="grid grid-cols-3 gap-1 md:gap-2">
             {results.map((reel) => (
                 <div key={reel.id} onClick={onClose}>
@@ -110,7 +112,7 @@ export default function SearchPanel({ isOpen, onClose }) {
 
     return (
         <div
-            className={`fixed top-0 left-1/2 -translate-x-1/2 w-[95%] md:w-[80%] h-[60%] md:h-[50%] bg-black/80 backdrop-blur-xl z-50 transition-transform duration-300 ease-in-out border border-t-0 border-gray-700/50 rounded-b-2xl shadow-2xl flex flex-col ${
+            className={`fixed top-0 left-1/2 -translate-x-1/2 w-[95%] md:w-[60%] h-[40%] md:h-[50%] bg-black/80 backdrop-blur-xl z-50 transition-transform duration-300 ease-in-out border border-t-0 border-gray-700/50 rounded-b-2xl shadow-2xl flex flex-col ${
                 isOpen ? 'translate-y-0' : '-translate-y-full'
             }`}
         >
@@ -124,7 +126,7 @@ export default function SearchPanel({ isOpen, onClose }) {
                             type="text"
                             value={query}
                             onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Szukaj (min. 3 znaki)..."
+                            placeholder={t('searchPlaceholder')}
                             className="w-full bg-gray-900/50 border border-gray-700 text-white rounded-lg pl-10 pr-10 py-2 focus:outline-none focus:border-blue-500 placeholder-gray-500 text-sm md:text-base"
                             autoFocus={isOpen}
                         />
@@ -143,7 +145,7 @@ export default function SearchPanel({ isOpen, onClose }) {
                         onClick={onClose}
                         className="text-gray-300 hover:text-white p-2 text-sm font-medium"
                     >
-                        Anuluj
+                        {t('cancel')}
                     </button>
                 </div>
 
@@ -166,7 +168,7 @@ export default function SearchPanel({ isOpen, onClose }) {
                 <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
                     {query.length < 3 ? (
                         <div className="mt-8 text-center text-gray-400">
-                            <p className="text-sm">Wpisz co najmniej 3 znaki, aby wyszukać.</p>
+                            <p className="text-sm">{t('searchMinChars')}</p>
                             <div className="mt-6 flex flex-wrap gap-2 justify-center">
                                 <span className="px-3 py-1 bg-white/5 rounded-full text-xs text-gray-400 border border-gray-800">#viral</span>
                                 <span className="px-3 py-1 bg-white/5 rounded-full text-xs text-gray-400 border border-gray-800">#music</span>
@@ -182,7 +184,7 @@ export default function SearchPanel({ isOpen, onClose }) {
                         </div>
                     ) : results.length === 0 ? (
                         <div className="mt-8 text-center text-gray-400">
-                            <p className="text-sm">Brak wyników dla "{query}"</p>
+                            <p className="text-sm">{t('noResults', { query })}</p>
                         </div>
                     ) : (
                         <div className="pt-2 pb-4">

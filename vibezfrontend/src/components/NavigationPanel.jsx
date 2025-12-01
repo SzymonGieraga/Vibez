@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { signOut } from 'firebase/auth';
 import { Link, useLocation } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 const HomeIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg> );
 const ProfileIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> );
@@ -71,6 +72,7 @@ export default function NavigationPanel({
                                             activeFeed,
                                             setActiveFeed
                                         }) {
+    const { t } = useTranslation();
     const username = appUser ? appUser.username : user.email.split('@')[0];
     const [isListOpen, setIsListOpen] = useState(false);
 
@@ -93,23 +95,23 @@ export default function NavigationPanel({
 
                     {isMainPage ? (
                         <div className="mb-6">
-                            <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">Feeds</p>
+                            <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('feeds')}</p>
                             <ul className="space-y-4">
                                 <NavButton
                                     icon={<HomeIcon />}
-                                    label="For You"
+                                    label={t('forYou')}
                                     isActive={activeFeed === 'FOR_YOU'}
                                     onClick={() => setActiveFeed('FOR_YOU')}
                                 />
                                 <NavButton
                                     icon={<UsersIcon />}
-                                    label="Following"
+                                    label={t('followingFeed')}
                                     isActive={activeFeed === 'FOLLOWING'}
                                     onClick={() => setActiveFeed('FOLLOWING')}
                                 />
                                 <NavButton
                                     icon={<PopularIcon />}
-                                    label="Popular"
+                                    label={t('popular')}
                                     isActive={activeFeed === 'POPULAR'}
                                     onClick={() => setActiveFeed('POPULAR')}
                                 />
@@ -117,26 +119,26 @@ export default function NavigationPanel({
                         </div>
                     ) : (
                         <div className="mb-6">
-                            <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">Navigation</p>
+                            <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('navigation')}</p>
                             <ul className="space-y-4">
-                                <NavItem icon={<HomeIcon />} label="Main Page" to="/" />
+                                <NavItem icon={<HomeIcon />} label={t('mainPage')} to="/" />
                             </ul>
                         </div>
                     )}
 
                     <div className="border-t border-gray-800 pt-6">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">Menu</p>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('menu')}</p>
                         <ul className="space-y-4">
-                            <NavItem icon={<ProfileIcon />} label="Profile" to={`/profile/${username}`} />
+                            <NavItem icon={<ProfileIcon />} label={t('profile')} to={`/profile/${username}`} />
                             <NavButton
                                 icon={<ChatIcon />}
-                                label="Messages"
+                                label={t('messages')}
                                 badge={totalUnreadChats > 0}
                                 onClick={() => setIsChatModalOpen(true)}
                             />
                             <NavButton
                                 icon={<NotificationIcon />}
-                                label="Notifications"
+                                label={t('notifications')}
                                 badge={unreadCount > 0}
                                 onClick={() => setIsListOpen(!isListOpen)}
                             />
@@ -149,7 +151,7 @@ export default function NavigationPanel({
                                             className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 p-2 -ml-2 mb-1"
                                         >
                                             <CheckAllIcon />
-                                            <span>Mark all as read</span>
+                                            <span>{t('markAllRead')}</span>
                                         </button>
                                     )}
 
@@ -164,19 +166,19 @@ export default function NavigationPanel({
                                                 </li>
                                             ))
                                         ) : (
-                                            <p className="text-gray-500 text-sm p-2">No notifications.</p>
+                                            <p className="text-gray-500 text-sm p-2">{t('noNotifications')}</p>
                                         )}
                                     </ul>
                                 </div>
                             )}
-                            <NavItem icon={<SettingsIcon />} label="Settings" to="#" />
+                            <NavItem icon={<SettingsIcon />} label={t('settings')} to="#" />
                         </ul>
                     </div>
                 </div>
                 <div>
-                    <p className="text-xs text-gray-500">Logged in as:</p>
+                    <p className="text-xs text-gray-500">{t('loggedInAs')}</p>
                     <p className="text-sm font-bold truncate">{user.email}</p>
-                    <button onClick={async () => await signOut(auth)} className="w-full mt-4 text-left text-sm text-gray-400 hover:text-white">Logout</button>
+                    <button onClick={async () => await signOut(auth)} className="w-full mt-4 text-left text-sm text-gray-400 hover:text-white">{t('logout')}</button>
                 </div>
             </nav>
         </>

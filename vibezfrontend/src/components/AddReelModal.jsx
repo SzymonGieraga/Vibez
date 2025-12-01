@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import {apiClient} from "../api/apiClient.js";
+import { useTranslation } from 'react-i18next';
+import { apiClient } from "../api/apiClient.js";
 
 const FormInput = ({ label, name, value, onChange, placeholder, required = false }) => (
     <div>
@@ -30,6 +31,7 @@ const FileInput = ({ label, accept, onFileChange, required = false }) => (
 );
 
 const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, thumbnailSource }) => {
+    const { t } = useTranslation();
     const [selectedFrames, setSelectedFrames] = useState([]);
     const [selectedThumbnail, setSelectedThumbnail] = useState(null);
     const [currentTime, setCurrentTime] = useState(0);
@@ -105,7 +107,7 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
 
     const handleAddFrame = async () => {
         if (selectedFrames.length >= 6) {
-            alert('You can select maximum 6 frames');
+            alert(t('maxFramesAlert'));
             return;
         }
 
@@ -164,8 +166,8 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
         <div className="space-y-4 bg-gray-800 p-4 rounded-lg">
             <label className="block text-sm font-medium text-gray-300">
                 {thumbnailSource === 'video'
-                    ? 'Select Preview Frames & Thumbnail'
-                    : 'Select Preview Frames'
+                    ? t('selectPreviewFramesAndThumbnail')
+                    : t('selectPreviewFrames')
                 }
             </label>
             <div className="relative bg-black rounded-lg overflow-hidden">
@@ -217,14 +219,14 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
                                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
                                 </svg>
-                                Pause
+                                {t('pause')}
                             </span>
                         ) : (
                             <span className="flex items-center">
                                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                                 </svg>
-                                Play
+                                {t('play')}
                             </span>
                         )}
                     </button>
@@ -235,7 +237,7 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
                         disabled={selectedFrames.length >= 6}
                         className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg text-sm font-medium transition-colors"
                     >
-                        📸 Add Preview Frame ({selectedFrames.length}/6)
+                        {t('addPreviewFrame')} ({selectedFrames.length}/6)
                     </button>
 
                     {thumbnailSource === 'video' && (
@@ -244,7 +246,7 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
                             onClick={handleSetThumbnail}
                             className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium transition-colors"
                         >
-                            🖼️ Set as Thumbnail
+                            {t('setAsThumbnail')}
                         </button>
                     )}
                 </div>
@@ -252,7 +254,7 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
 
             {thumbnailSource === 'video' && selectedThumbnail && (
                 <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-300">Selected Thumbnail from Video:</label>
+                    <label className="block text-sm font-medium text-gray-300">{t('selectedThumbnailFromVideo')}</label>
                     <div className="relative inline-block">
                         <img
                             src={selectedThumbnail.previewUrl}
@@ -276,7 +278,7 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
             {selectedFrames.length > 0 && (
                 <div className="space-y-2">
                     <label className="block text-sm font-medium text-gray-300">
-                        Selected Preview Frames ({selectedFrames.length}/6):
+                        {t('selectedPreviewFramesCount', { count: selectedFrames.length })}
                     </label>
                     <div className="grid grid-cols-3 gap-2">
                         {selectedFrames.map((frame, index) => (
@@ -303,17 +305,17 @@ const VideoPreviewSelector = ({ videoFile, onFramesSelect, onThumbnailSelect, th
             )}
 
             <p className="text-xs text-gray-400">
-                💡 Tip: Pause the video at desired moments and click "Add Preview Frame" to capture them.
-                These frames will be shown when users hover over your reel.
+                {t('previewFrameTip')}
             </p>
         </div>
     );
 };
 
 export default function AddReelModal({ user, onClose, onReelAdded }) {
+    const { t } = useTranslation();
     const [videoFile, setVideoFile] = useState(null);
     const [thumbnailFile, setThumbnailFile] = useState(null);
-    const [thumbnailSource, setThumbnailSource] = useState('upload'); // 'upload' or 'video'
+    const [thumbnailSource, setThumbnailSource] = useState('upload');
     const [previewFrames, setPreviewFrames] = useState([]);
     const [formData, setFormData] = useState({
         description: '',
@@ -347,13 +349,13 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!videoFile) {
-            setError('Please select a video file.');
+            setError(t('selectVideoError'));
             return;
         }
 
         setUploading(true);
         setError('');
-        setUploadProgress('Uploading video and frames...');
+        setUploadProgress(t('uploadingProgress'));
 
         try {
             const formDataToSend = new FormData();
@@ -381,10 +383,10 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
 
             if (!saveResponse.ok) {
                 const errorText = await saveResponse.text();
-                throw new Error(`Failed to save reel: ${errorText}`);
+                throw new Error(t('saveReelError', { error: errorText }));
             }
 
-            setUploadProgress('Reel published successfully!');
+            setUploadProgress(t('publishSuccess'));
             setTimeout(() => {
                 onReelAdded();
                 onClose();
@@ -446,37 +448,37 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
             `}</style>
 
             <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-bold mb-6">Add New Reel</h2>
+                <h2 className="text-xl font-bold mb-6">{t('addNewReel')}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <FormInput
-                        label="Song Title"
+                        label={t('songTitle')}
                         name="songTitle"
                         value={formData.songTitle}
                         onChange={handleInputChange}
                         required
                     />
                     <FormInput
-                        label="Author"
+                        label={t('author')}
                         name="author"
                         value={formData.author}
                         onChange={handleInputChange}
                         required
                     />
                     <FormInput
-                        label="Genre"
+                        label={t('genre')}
                         name="genre"
                         value={formData.genre}
                         onChange={handleInputChange}
                     />
                     <FormInput
-                        label="Tags (comma separated)"
+                        label={t('tagsCommaSeparated')}
                         name="tags"
                         value={formData.tags}
                         onChange={handleInputChange}
-                        placeholder="e.g. rock, chill, 80s"
+                        placeholder={t('tagsPlaceholder')}
                     />
                     <div>
-                        <label className="block text-sm font-medium text-gray-400">Description</label>
+                        <label className="block text-sm font-medium text-gray-400">{t('description')}</label>
                         <textarea
                             name="description"
                             value={formData.description}
@@ -487,14 +489,14 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                         />
                     </div>
                     <FileInput
-                        label="Video File (will be converted to MP4)"
+                        label={t('videoFileLabel')}
                         accept="video/*"
                         onFileChange={handleVideoChange}
                         required
                     />
 
                     <div className="space-y-3 bg-gray-800 p-4 rounded-lg">
-                        <label className="block text-sm font-medium text-gray-300">Thumbnail Options</label>
+                        <label className="block text-sm font-medium text-gray-300">{t('thumbnailOptions')}</label>
 
                         <div className="flex gap-4">
                             <label className="flex items-center cursor-pointer">
@@ -505,7 +507,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                                     onChange={(e) => handleThumbnailSourceChange(e.target.value)}
                                     className="w-4 h-4 text-blue-500 focus:ring-blue-500"
                                 />
-                                <span className="ml-2 text-sm text-gray-300">Upload Custom Thumbnail</span>
+                                <span className="ml-2 text-sm text-gray-300">{t('uploadCustomThumbnail')}</span>
                             </label>
 
                             <label className="flex items-center cursor-pointer">
@@ -518,14 +520,14 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                                     disabled={!videoFile}
                                 />
                                 <span className={`ml-2 text-sm ${!videoFile ? 'text-gray-600' : 'text-gray-300'}`}>
-                                    Select from Video
+                                    {t('selectFromVideo')}
                                 </span>
                             </label>
                         </div>
 
                         {thumbnailSource === 'upload' && (
                             <FileInput
-                                label="Upload Thumbnail Image"
+                                label={t('uploadThumbnailImage')}
                                 accept="image/*"
                                 onFileChange={setThumbnailFile}
                             />
@@ -551,7 +553,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                                 <span className="font-medium loading-dots">{uploadProgress}</span>
                             </div>
                             <p className="text-xs text-blue-300 text-center mt-3 animate-pulse">
-                                ⏳ This may take a few minutes depending on video size
+                                {t('processingWait')}
                             </p>
                         </div>
                     )}
@@ -569,14 +571,14 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                             disabled={uploading}
                             className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={uploading}
                             className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500 disabled:cursor-not-allowed transition-all"
                         >
-                            {uploading ? 'Processing...' : 'Publish'}
+                            {uploading ? t('processing') : t('publish')}
                         </button>
                     </div>
                 </form>

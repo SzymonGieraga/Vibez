@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
 
 const SmallHeartIcon = ({ isLiked, disabled }) => (
@@ -33,6 +34,7 @@ const CommentItem = ({
                          onCommentClick,
                          isReply = false
                      }) => {
+    const { t } = useTranslation();
     const [isEditing, setIsEditing] = useState(false);
     const [editText, setEditText] = useState(comment.text);
     const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -67,7 +69,7 @@ const CommentItem = ({
         <div className="flex flex-col">
             {comment.isPinned && !isReply && (
                 <div className="text-xs text-blue-400 font-semibold mb-1 flex items-center gap-1">
-                    📌 Przypięty
+                    {t('pinned')}
                 </div>
             )}
             <div className="flex items-start gap-3">
@@ -88,7 +90,7 @@ const CommentItem = ({
                         <Link to={`/profile/${comment.user.username}`} className="hover:text-white">
                             <span>@{comment.user.username}</span>
                         </Link>
-                        {isEdited && <span>(edytowany)</span>}
+                        {isEdited && <span>{t('edited')}</span>}
                     </div>
                     {!isEditing ? (
                         <div>
@@ -106,7 +108,7 @@ const CommentItem = ({
                                     }}
                                     className="text-xs text-blue-400 hover:text-blue-300 mt-1"
                                 >
-                                    Show more
+                                    {t('showMore')}
                                 </button>
                             )}
                             {isExpanded && isLongComment && (
@@ -117,7 +119,7 @@ const CommentItem = ({
                                     }}
                                     className="text-xs text-blue-400 hover:text-blue-300 mt-1"
                                 >
-                                    Show less
+                                    {t('showLess')}
                                 </button>
                             )}
                         </div>
@@ -130,8 +132,8 @@ const CommentItem = ({
                                 rows="3"
                             />
                             <div className="flex gap-2 mt-1">
-                                <button type="submit" className="text-xs bg-white text-black px-2 py-1 rounded">Save</button>
-                                <button type="button" onClick={() => setIsEditing(false)} className="text-xs text-gray-400">Cancel</button>
+                                <button type="submit" className="text-xs bg-white text-black px-2 py-1 rounded">{t('save')}</button>
+                                <button type="button" onClick={() => setIsEditing(false)} className="text-xs text-gray-400">{t('cancel')}</button>
                             </div>
                         </form>
                     )}
@@ -147,7 +149,7 @@ const CommentItem = ({
 
                         {replyCount > 0 && (
                             <span className="text-gray-500">
-                                {replyCount} {replyCount === 1 ? 'reply' : 'replies'}
+                                {t('replies', { count: replyCount })}
                             </span>
                         )}
 
@@ -155,16 +157,16 @@ const CommentItem = ({
                             onClick={() => onSetReplyTo(comment)}
                             className="hover:text-white"
                         >
-                            Reply
+                            {t('reply')}
                         </button>
                         {(isOwner || isReelOwner) && (
                             <button onClick={() => setIsMenuOpen(prev => !prev)} className="font-bold">...</button>
                         )}
                         {isMenuOpen && (
                             <div className="absolute top-5 right-0 bg-gray-800 rounded-md shadow-lg p-2 text-white text-sm z-10 w-28">
-                                {isOwner && <button onClick={() => { setIsEditing(true); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">Edit</button>}
-                                {isOwner && <button onClick={() => { onDelete(comment.id); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">Delete</button>}
-                                {isReelOwner && <button onClick={() => { onPin(comment.id); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">{comment.isPinned ? 'Unpin' : 'Pin'}</button>}
+                                {isOwner && <button onClick={() => { setIsEditing(true); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">{t('edit')}</button>}
+                                {isOwner && <button onClick={() => { onDelete(comment.id); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">{t('delete')}</button>}
+                                {isReelOwner && <button onClick={() => { onPin(comment.id); setIsMenuOpen(false); }} className="block w-full text-left p-1 hover:bg-gray-700">{comment.isPinned ? t('unpin') : t('pin')}</button>}
                             </div>
                         )}
                     </div>
@@ -196,7 +198,7 @@ const CommentItem = ({
                             className="text-xs text-blue-400 hover:text-blue-300 ml-16 flex items-center gap-1"
                         >
                             <ReplyArrow />
-                            Show {sortedReplies.length - 3} more replies
+                            {t('showMoreReplies', { count: sortedReplies.length - 3 })}
                         </button>
                     )}
                 </div>
@@ -206,6 +208,7 @@ const CommentItem = ({
 };
 
 export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCommentChange }) {
+    const { t } = useTranslation();
     const [likedCommentIds, setLikedCommentIds] = useState(new Set());
     const [togglingCommentLikes, setTogglingCommentLikes] = useState(new Set());
     const [replyingTo, setReplyingTo] = useState(null);
@@ -378,7 +381,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
             <div className="p-4 border-b border-gray-700 flex justify-between items-center">
                 <div className="flex items-center gap-2">
                     <h2 className="font-bold text-lg">
-                        {currentFocusedComment ? 'Thread' : `Comments (${reel?.comments?.length || 0})`}
+                        {currentFocusedComment ? t('thread') : t('commentsCount', { count: reel?.comments?.length || 0 })}
                     </h2>
                     {currentFocusedComment && (
                         <>
@@ -389,7 +392,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                                 </svg>
-                                Back
+                                {t('back')}
                             </button>
                             <button
                                 onClick={handleGoToMain}
@@ -398,7 +401,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                                 </svg>
-                                All Comments
+                                {t('allComments')}
                             </button>
                         </>
                     )}
@@ -429,13 +432,13 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
             <form onSubmit={handleAddComment} className="p-4 border-t border-gray-700">
                 {replyingTo && (
                     <div className="text-xs text-gray-400 mb-2">
-                        Replying to @{replyingTo.user.username}
+                        {t('replyingTo', { username: replyingTo.user.username })}
                         <button
                             type="button"
                             onClick={() => setReplyingTo(null)}
                             className="ml-2 text-blue-400 hover:text-blue-300 font-bold"
                         >
-                            [Cancel]
+                            {t('cancelReply')}
                         </button>
                     </div>
                 )}
@@ -444,7 +447,7 @@ export default function CommentsPanel({ isOpen, onClose, reel, currentUser, onCo
                     type="text"
                     value={newCommentText}
                     onChange={(e) => setNewCommentText(e.target.value)}
-                    placeholder={placeholderReplyTo ? `Reply to @${placeholderReplyTo}...` : "Add a comment..."}
+                    placeholder={placeholderReplyTo ? t('replyPlaceholder', { username: placeholderReplyTo }) : t('addCommentPlaceholder')}
                     className="w-full bg-gray-800 border border-gray-700 rounded-full py-2 px-4 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
             </form>

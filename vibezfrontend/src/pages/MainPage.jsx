@@ -168,6 +168,7 @@ export default function MainPage({
                     isTogglingLike={isTogglingLike}
                     onOpenPlaylistModal={handleOpenPlaylistModal}
                     onShare={handleOpenShareModal}
+                    onAddReel={() => setIsModalOpen(true)}
                 />
             </main>
 

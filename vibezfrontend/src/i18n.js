@@ -1,54 +1,30 @@
 import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 
-const plTranslations = {
-    welcome: "Witaj w Vibez!",
-    discoverMusic: "Odkrywaj, twórz, dziel się muzyką.",
-    login: "Zaloguj się",
-    register: "Zarejestruj się",
-    email: "Email",
-    password: "Hasło",
-    confirmPassword: "Potwierdź hasło",
-    loginWithGoogle: "Zaloguj się z Google",
-    logout: "Wyloguj",
-    loading: "Ładowanie...",
-    or: "LUB",
-    loginFailed: "Błąd logowania. Sprawdź dane.",
-    registrationFailed: "Błąd rejestracji.",
-    passwordsNoMatch: "Hasła nie są takie same.",
-    back: "Powrót",
-};
+import translationPL from './locales/pl/translation.json';
+import translationEN from './locales/en/translation.json';
 
-const enTranslations = {
-    welcome: "Welcome to Vibez!",
-    discoverMusic: "Discover, create, share music.",
-    login: "Log In",
-    register: "Sign Up",
-    email: "Email",
-    password: "Password",
-    confirmPassword: "Confirm Password",
-    loginWithGoogle: "Log in with Google",
-    logout: "Log Out",
-    loading: "Loading...",
-    or: "OR",
-    loginFailed: "Login failed. Check credentials.",
-    registrationFailed: "Registration failed.",
-    passwordsNoMatch: "Passwords do not match.",
-    back: "Back",
+const savedLanguage = localStorage.getItem('app_language') || 'pl';
+
+const resources = {
+    pl: {
+        translation: translationPL
+    },
+    en: {
+        translation: translationEN
+    }
 };
 
 i18n
     .use(initReactI18next)
     .init({
-        resources: {
-            pl: { translation: plTranslations },
-            en: { translation: enTranslations },
-        },
-        lng: 'pl',
+        resources,
+        lng: savedLanguage,
         fallbackLng: 'en',
+        debug: true,
         interpolation: {
-            escapeValue: false,
-        },
+            escapeValue: false
+        }
     });
 
 export default i18n;

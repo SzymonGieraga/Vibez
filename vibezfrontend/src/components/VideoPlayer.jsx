@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
 
 const MuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l4-4m0 4l-4-4" /></svg> );
@@ -9,6 +10,7 @@ const CommentIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentCo
 const BookmarkIcon = () => <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" /></svg>;
 const ShareIcon = () => (<svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M3 15v4a2 2 0 002 2h14a2 2 0 002-2v-4M17 9l-5 5-5-5M12 12.8V2.5" /></svg>);
 const EyeIcon = () => ( <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg> );
+const AddIcon = () => ( <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" /></svg> );
 
 export default function VideoPlayer({
                                         videos,
@@ -23,8 +25,10 @@ export default function VideoPlayer({
                                         currentVideoIndex,
                                         setCurrentVideoIndex,
                                         onOpenPlaylistModal,
-                                        onShare
+                                        onShare,
+                                        onAddReel
                                     }) {
+    const { t } = useTranslation();
     const [isPlaying, setIsPlaying] = useState(true);
     const [progress, setProgress] = useState(0);
     const [isDetailsVisible, setIsDetailsVisible] = useState(false);
@@ -79,12 +83,12 @@ export default function VideoPlayer({
     useEffect(() => { if(videoRef.current) videoRef.current.volume = volume; }, [volume]);
 
     if (!videos || videos.length === 0) {
-        return <div className="text-gray-500 flex items-center justify-center h-full">Loading videos...</div>;
+        return <div className="text-gray-500 flex items-center justify-center h-full">{t('loadingVideos')}</div>;
     }
 
     const currentVideo = videos[currentVideoIndex];
     if (!currentVideo) {
-        return <div className="text-gray-500 flex items-center justify-center h-full">No video to display.</div>;
+        return <div className="text-gray-500 flex items-center justify-center h-full">{t('noVideo')}</div>;
     }
 
     const isLiked = likedReelIds.has(currentVideo.id);
@@ -142,7 +146,7 @@ export default function VideoPlayer({
                 <div className="text-white pointer-events-auto" onClick={(e) => e.stopPropagation()}>
                     <div className="cursor-pointer" onClick={() => setIsDetailsVisible(true)}>
                         <p className="font-bold text-sm">@{currentVideo.username}</p>
-                        <p className="text-xs text-gray-300">{currentVideo.songTitle} by {currentVideo.author}</p>
+                        <p className="text-xs text-gray-300">{currentVideo.songTitle} {t('by')} {currentVideo.author}</p>
                         <p className="text-xs text-gray-400 mt-1 truncate">{currentVideo.description}</p>
                     </div>
                     <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-10">
@@ -170,6 +174,13 @@ export default function VideoPlayer({
                                 if (onShare) onShare(currentVideo);
                             }}
                         />
+                        <InteractionButton
+                            icon={<AddIcon />}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onAddReel) onAddReel();
+                            }}
+                        />
                     </div>
                     <div ref={progressRef} onClick={handleSeek} className="w-full bg-gray-500 bg-opacity-50 h-1.5 rounded-full mt-2 cursor-pointer">
                         <div style={{ width: `${progress}%` }} className="h-full bg-white rounded-full"></div>
@@ -191,7 +202,7 @@ export default function VideoPlayer({
 const InteractionButton = ({ icon, count, onClick, disabled = false }) => (
     <div className="flex flex-col items-center" onClick={!disabled ? onClick : null}>
         <button
-            className="w-12 h-12 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-50"
+            className="w-12 h-12 bg-black/40 rounded-full flex items-center justify-center text-white disabled:opacity-50 hover:bg-black/60 transition-colors"
             disabled={disabled}>
             {icon}
         </button>
@@ -199,30 +210,33 @@ const InteractionButton = ({ icon, count, onClick, disabled = false }) => (
     </div>
 );
 
-const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => (
-    <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
-        <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>
-        <div className="text-left text-sm space-y-2">
-            <div className="flex items-center gap-2 mb-2">
-                <EyeIcon />
-                <span className="text-gray-300 text-xs">{video.viewCount || 0} views</span>
-            </div>
-            <DetailRow label="Song" value={`${video.songTitle} by ${video.author}`} />
-            <DetailRow label="Genre" value={video.genre} />
-            <DetailRow label="Posted by" value={`@${video.username}`} />
-            <div><p className="font-bold text-gray-400">Description</p><p className="text-white whitespace-pre-wrap">{video.description}</p></div>
-            {video.tags && (
-                <div>
-                    <p className="font-bold text-gray-400">Tags</p>
-                    <div className="flex flex-wrap gap-1 mt-1">
-                        {video.tags.map(tag => (
-                            <span key={tag.id} className="bg-gray-700 text-gray-200 text-xs px-2 py-0.5 rounded-full">#{tag.name}</span>
-                        ))}
-                    </div>
+const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => {
+    const { t } = useTranslation();
+    return (
+        <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
+            <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>
+            <div className="text-left text-sm space-y-2">
+                <div className="flex items-center gap-2 mb-2">
+                    <EyeIcon />
+                    <span className="text-gray-300 text-xs">{video.viewCount || 0} {t('views')}</span>
                 </div>
-            )}
+                <DetailRow label={t('song')} value={`${video.songTitle} ${t('by')} ${video.author}`} />
+                <DetailRow label={t('genre')} value={video.genre} />
+                <DetailRow label={t('postedBy')} value={`@${video.username}`} />
+                <div><p className="font-bold text-gray-400">{t('description')}</p><p className="text-white whitespace-pre-wrap">{video.description}</p></div>
+                {video.tags && (
+                    <div>
+                        <p className="font-bold text-gray-400">{t('tags')}</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                            {video.tags.map(tag => (
+                                <span key={tag.id} className="bg-gray-700 text-gray-200 text-xs px-2 py-0.5 rounded-full">#{tag.name}</span>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
+};
 
 const DetailRow = ({ label, value }) => ( <div><p className="font-bold text-gray-400">{label}</p><p className="text-white">{value}</p></div> );

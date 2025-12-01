@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../api/apiClient';
 
 export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, onDelete }) {
+    const { t } = useTranslation();
     const [name, setName] = useState(playlist.name);
     const [description, setDescription] = useState(playlist.description || '');
     const [isPublic, setIsPublic] = useState(playlist.public);
@@ -34,7 +36,7 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
     };
 
     const handleDelete = async () => {
-        if (!window.confirm(`Are you sure you want to delete "${playlist.name}"? This cannot be undone.`)) {
+        if (!window.confirm(t('deletePlaylistConfirm', { name: playlist.name }))) {
             return;
         }
         setIsLoading(true);
@@ -57,10 +59,10 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
             <div className="bg-gray-900 border border-gray-700 p-8 rounded-lg shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-bold mb-6">Edit Playlist</h2>
+                <h2 className="text-xl font-bold mb-6">{t('editPlaylist')}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400">Name</label>
+                        <label className="block text-sm font-medium text-gray-400">{t('name')}</label>
                         <input
                             type="text"
                             value={name}
@@ -70,7 +72,7 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400">Description</label>
+                        <label className="block text-sm font-medium text-gray-400">{t('description')}</label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
@@ -87,7 +89,7 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
                             className="h-4 w-4 text-gray-600 border-gray-700 rounded bg-black focus:ring-gray-500"
                         />
                         <label htmlFor="isPublicCheckbox" className="ml-2 block text-sm text-gray-400">
-                            Public Playlist
+                            {t('publicPlaylist')}
                         </label>
                     </div>
 
@@ -100,7 +102,7 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
                             disabled={isLoading}
                             className="py-2 px-4 text-sm font-medium text-red-500 hover:text-red-400 disabled:text-gray-600"
                         >
-                            {isLoading ? 'Deleting...' : 'Delete Playlist'}
+                            {isLoading ? t('deleting') : t('deletePlaylist')}
                         </button>
                         <div className="flex justify-end">
                             <button
@@ -109,14 +111,14 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
                                 disabled={isLoading}
                                 className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white"
                             >
-                                Cancel
+                                {t('cancel')}
                             </button>
                             <button
                                 type="submit"
                                 disabled={isLoading}
                                 className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500"
                             >
-                                {isLoading ? 'Saving...' : 'Save'}
+                                {isLoading ? t('saving') : t('save')}
                             </button>
                         </div>
                     </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next'; // Import i18n
 import NavigationPanel from '../components/NavigationPanel.jsx';
 import ReelPreview from '../components/ReelPreview.jsx';
 import PlaylistCard from '../components/PlaylistCard.jsx';
@@ -44,7 +45,8 @@ export default function ProfilePage({
                                         createOrGetPrivateChat,
                                         openChat
                                     }) {
-    const { username } = useParams();
+    const { t } = useTranslation(); // Hook do tłumaczeń
+    const {username} = useParams();
     const [profile, setProfile] = useState(null);
     const [reels, setReels] = useState([]);
     const [likedReels, setLikedReels] = useState([]);
@@ -59,7 +61,7 @@ export default function ProfilePage({
     const [isEditPlaylistModalOpen, setIsEditPlaylistModalOpen] = useState(false);
     const [playlistToEdit, setPlaylistToEdit] = useState(null);
 
-    const [followStats, setFollowStats] = useState({ followers: 0, following: 0 });
+    const [followStats, setFollowStats] = useState({followers: 0, following: 0});
     const [isFollowing, setIsFollowing] = useState(false);
     const [isFollowLoading, setIsFollowLoading] = useState(false);
     const [isChatLoading, setIsChatLoading] = useState(false);
@@ -238,11 +240,11 @@ export default function ProfilePage({
 
     const openFollowModal = (mode) => {
         if (!appUser) return;
-        setFollowModal({ isOpen: true, mode: mode });
+        setFollowModal({isOpen: true, mode: mode});
     };
 
     const handleModalClose = () => {
-        setFollowModal({ isOpen: false, mode: 'followers' });
+        setFollowModal({isOpen: false, mode: 'followers'});
         if (isOwnProfile) {
             fetchFollowStats(username);
         }
@@ -257,11 +259,11 @@ export default function ProfilePage({
     const displayedReels = activeTab === 'reels' ? reels : likedReels;
 
     if (isLoading) {
-        return <div className="bg-black text-white flex items-center justify-center h-screen">Loading Profile...</div>;
+        return <div className="bg-black text-white flex items-center justify-center h-screen">{t('loadingProfile')}</div>;
     }
 
     if (!profile) {
-        return <div className="bg-black text-white flex items-center justify-center h-screen">Profile not found.</div>;
+        return <div className="bg-black text-white flex items-center justify-center h-screen">{t('profileNotFound')}</div>;
     }
 
     return (
@@ -276,21 +278,23 @@ export default function ProfilePage({
                         />
                         <div className="text-center sm:text-left flex-1">
                             <h1 className="text-2xl sm:text-3xl font-bold">{profile.username}</h1>
-                            <p className="text-gray-400 mt-2 max-w-md">{profile.bio || "No bio yet."}</p>
+                            <p className="text-gray-400 mt-2 max-w-md">{profile.bio || t('noBio')}</p>
                             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mt-4">
 
                                 <div className="flex gap-6 justify-center sm:justify-start text-sm">
                                     <div>
                                         <span className="font-bold">{reels.length}</span>
-                                        <span className="text-gray-400 ml-1">reels</span>
+                                        <span className="text-gray-400 ml-1">{t('reelsCount')}</span>
                                     </div>
-                                    <div onClick={() => openFollowModal('followers')} className="cursor-pointer hover:text-gray-300">
+                                    <div onClick={() => openFollowModal('followers')}
+                                         className="cursor-pointer hover:text-gray-300">
                                         <span className="font-bold">{followStats.followers}</span>
-                                        <span className="text-gray-400 ml-1">followers</span>
+                                        <span className="text-gray-400 ml-1">{t('followers')}</span>
                                     </div>
-                                    <div onClick={() => openFollowModal('following')} className="cursor-pointer hover:text-gray-300">
+                                    <div onClick={() => openFollowModal('following')}
+                                         className="cursor-pointer hover:text-gray-300">
                                         <span className="font-bold">{followStats.following}</span>
-                                        <span className="text-gray-400 ml-1">following</span>
+                                        <span className="text-gray-400 ml-1">{t('following')}</span>
                                     </div>
                                 </div>
 
@@ -300,7 +304,7 @@ export default function ProfilePage({
                                             onClick={() => setIsEditModalOpen(true)}
                                             className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center"
                                         >
-                                            <EditIcon /> Edit Profile
+                                            <EditIcon/> {t('editProfile')}
                                         </button>
                                     ) : (
                                         <>
@@ -313,7 +317,7 @@ export default function ProfilePage({
                                                         : 'bg-white hover:bg-gray-200 text-black'
                                                 } disabled:opacity-50 transition-colors`}
                                             >
-                                                {isFollowLoading ? '...' : (isFollowing ? 'Following' : 'Follow')}
+                                                {isFollowLoading ? '...' : (isFollowing ? t('followingState') : t('follow'))}
                                             </button>
 
                                             <button
@@ -321,7 +325,7 @@ export default function ProfilePage({
                                                 disabled={isChatLoading || !appUser}
                                                 className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center disabled:opacity-50"
                                             >
-                                                <MessageIcon /> {isChatLoading ? '...' : 'Wiadomość'}
+                                                <MessageIcon/> {isChatLoading ? '...' : t('message')}
                                             </button>
                                         </>
                                     )}
@@ -335,39 +339,48 @@ export default function ProfilePage({
                     <div className="border-t border-gray-800">
                         <div className="flex justify-center gap-12 -mb-px">
                             <button
-                                onClick={() => { setActiveTab('reels'); setSelectedPlaylist(null); }}
+                                onClick={() => {
+                                    setActiveTab('reels');
+                                    setSelectedPlaylist(null);
+                                }}
                                 className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
                                     activeTab === 'reels'
                                         ? 'border-white text-white'
                                         : 'border-transparent text-gray-500 hover:text-gray-300'
                                 }`}
                             >
-                                <GridIcon />
+                                <GridIcon/>
                                 <span className="text-xs font-semibold uppercase tracking-wider">Reels</span>
                             </button>
 
                             <button
-                                onClick={() => { setActiveTab('liked'); setSelectedPlaylist(null); }}
+                                onClick={() => {
+                                    setActiveTab('liked');
+                                    setSelectedPlaylist(null);
+                                }}
                                 className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
                                     activeTab === 'liked'
                                         ? 'border-white text-white'
                                         : 'border-transparent text-gray-500 hover:text-gray-300'
                                 }`}
                             >
-                                <HeartIcon />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Liked</span>
+                                <HeartIcon/>
+                                <span className="text-xs font-semibold uppercase tracking-wider">{t('liked')}</span>
                             </button>
 
                             <button
-                                onClick={() => { setActiveTab('playlists'); setSelectedPlaylist(null); }}
+                                onClick={() => {
+                                    setActiveTab('playlists');
+                                    setSelectedPlaylist(null);
+                                }}
                                 className={`flex items-center gap-2 py-4 border-t-2 transition-colors ${
                                     activeTab === 'playlists'
                                         ? 'border-white text-white'
                                         : 'border-transparent text-gray-500 hover:text-gray-300'
                                 }`}
                             >
-                                <PlaylistIcon />
-                                <span className="text-xs font-semibold uppercase tracking-wider">Playlists</span>
+                                <PlaylistIcon/>
+                                <span className="text-xs font-semibold uppercase tracking-wider">{t('playlists')}</span>
                             </button>
                         </div>
                     </div>
@@ -377,14 +390,14 @@ export default function ProfilePage({
                             displayedReels.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                                     {displayedReels.map(reel => (
-                                        <ReelPreview key={reel.id} reel={reel} />
+                                        <ReelPreview key={reel.id} reel={reel}/>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="text-center py-12 text-gray-500">
-                                    <div className="mb-4"><GridIcon /></div>
-                                    <p className="text-lg font-semibold mb-1">No reels yet</p>
-                                    <p className="text-sm">Start sharing your music!</p>
+                                    <div className="mb-4"><GridIcon/></div>
+                                    <p className="text-lg font-semibold mb-1">{t('noReels')}</p>
+                                    <p className="text-sm">{t('startSharing')}</p>
                                 </div>
                             )
                         )}
@@ -392,23 +405,26 @@ export default function ProfilePage({
                         {activeTab === 'liked' && (
                             isLoadingLiked ? (
                                 <div className="text-center py-12 text-gray-500">
-                                    <svg className="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    <svg className="animate-spin h-8 w-8 mx-auto mb-2"
+                                         xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor"
+                                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                     </svg>
-                                    <p>Loading...</p>
+                                    <p>{t('loading')}</p>
                                 </div>
                             ) : displayedReels.length > 0 ? (
                                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                                     {displayedReels.map(reel => (
-                                        <ReelPreview key={reel.id} reel={reel} />
+                                        <ReelPreview key={reel.id} reel={reel}/>
                                     ))}
                                 </div>
                             ) : (
                                 <div className="text-center py-12 text-gray-500">
-                                    <div className="mb-4"><HeartIcon /></div>
-                                    <p className="text-lg font-semibold mb-1">No liked reels</p>
-                                    <p className="text-sm">Reels you like will appear here</p>
+                                    <div className="mb-4"><HeartIcon/></div>
+                                    <p className="text-lg font-semibold mb-1">{t('noLikedReels')}</p>
+                                    <p className="text-sm">{t('likedReelsDescription')}</p>
                                 </div>
                             )
                         )}
@@ -417,24 +433,28 @@ export default function ProfilePage({
                             <>
                                 {isLoadingPlaylists ? (
                                     <div className="text-center py-12 text-gray-500">
-                                        <svg className="animate-spin h-8 w-8 mx-auto mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        <svg className="animate-spin h-8 w-8 mx-auto mb-2"
+                                             xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                                    strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor"
+                                                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <p>Loading playlists...</p>
+                                        <p>{t('loadingPlaylists')}</p>
                                     </div>
                                 ) : selectedPlaylist ? (
                                     <div>
-                                        <div className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
+                                        <div
+                                            className="flex flex-col sm:flex-row justify-between sm:items-center mb-6 gap-4">
                                             <div>
                                                 <button
                                                     onClick={() => setSelectedPlaylist(null)}
                                                     className="text-sm text-gray-400 hover:text-white mb-2"
                                                 >
-                                                    &larr; Back to Playlists
+                                                    &larr; {t('backToPlaylists')}
                                                 </button>
                                                 <h2 className="text-3xl font-bold">{selectedPlaylist.name}</h2>
-                                                <p className="text-gray-400 text-sm mt-1">{selectedPlaylist.description || "No description."}</p>
+                                                <p className="text-gray-400 text-sm mt-1">{selectedPlaylist.description || t('noDescription')}</p>
                                             </div>
                                             {isOwnProfile && (
                                                 <div className="flex-shrink-0">
@@ -445,7 +465,7 @@ export default function ProfilePage({
                                                         }}
                                                         className="bg-gray-800 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded-lg flex items-center"
                                                     >
-                                                        <EditIcon /> Edit Playlist
+                                                        <EditIcon/> {t('editPlaylist')}
                                                     </button>
                                                 </div>
                                             )}
@@ -455,13 +475,13 @@ export default function ProfilePage({
                                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1">
                                                 {selectedPlaylist.playlistReels
                                                     .map(pr => (
-                                                        <ReelPreview key={pr.reel.id} reel={pr.reel} />
+                                                        <ReelPreview key={pr.reel.id} reel={pr.reel}/>
                                                     ))}
                                             </div>
                                         ) : (
                                             <div className="text-center py-12 text-gray-500">
-                                                <p className="text-lg font-semibold">This playlist is empty.</p>
-                                                <p className="text-sm">Add some reels to see them here.</p>
+                                                <p className="text-lg font-semibold">{t('playlistEmpty')}</p>
+                                                <p className="text-sm">{t('playlistEmptyDescription')}</p>
                                             </div>
                                         )}
                                     </div>
@@ -477,9 +497,9 @@ export default function ProfilePage({
                                     </div>
                                 ) : (
                                     <div className="text-center py-12 text-gray-500">
-                                        <div className="mb-4 mx-auto w-6 h-6"><PlaylistIcon /></div>
-                                        <p className="text-lg font-semibold mb-1">No playlists yet</p>
-                                        <p className="text-sm">Playlists you create will appear here.</p>
+                                        <div className="mb-4 mx-auto w-6 h-6"><PlaylistIcon/></div>
+                                        <p className="text-lg font-semibold mb-1">{t('noPlaylists')}</p>
+                                        <p className="text-sm">{t('noPlaylistsDescription')}</p>
                                     </div>
                                 )}
                             </>
@@ -491,7 +511,7 @@ export default function ProfilePage({
 
             <div className="absolute top-4 left-4 z-30">
                 <button onClick={() => setIsNavOpen(true)} className="p-2 bg-black/30 rounded-full hover:bg-black/50">
-                    <MenuIcon />
+                    <MenuIcon/>
                 </button>
             </div>
 
@@ -508,7 +528,7 @@ export default function ProfilePage({
                 setIsChatModalOpen={setIsChatModalOpen}
             />
 
-            {isNavOpen && <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setIsNavOpen(false)} />}
+            {isNavOpen && <div className="absolute inset-0 bg-black/30 z-20" onClick={() => setIsNavOpen(false)}/>}
 
             {isEditModalOpen && (
                 <EditProfileModal

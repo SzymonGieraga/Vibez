@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
 import ReelPreview from './ReelPreview';
 
@@ -65,6 +66,7 @@ export default function ChatModal({
                                       activeRoomId,
                                       setActiveRoomId
                                   }) {
+    const { t } = useTranslation();
     const [messageContent, setMessageContent] = useState("");
     const [isSearchMode, setIsSearchMode] = useState(false);
     const [isGroupMode, setIsGroupMode] = useState(false);
@@ -203,7 +205,7 @@ export default function ChatModal({
                                 if (!isSearchMode) setTimeout(() => document.getElementById('search-input')?.focus(), 100);
                             }}
                             className={`p-1 rounded transition-colors ${isSearchMode ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
-                            title="Nowa wiadomość"
+                            title={t('newMessage')}
                         >
                             <NewChatIcon />
                         </button>
@@ -217,7 +219,7 @@ export default function ChatModal({
                                     type="text"
                                     value={searchQuery}
                                     onChange={handleSearchChange}
-                                    placeholder="Szukaj osoby..."
+                                    placeholder={t('searchPeople')}
                                     className="flex-1 p-2 bg-gray-800 border border-gray-600 rounded text-sm text-white outline-none"
                                 />
                                 {isGroupMode && (
@@ -226,7 +228,7 @@ export default function ChatModal({
                                         disabled={selectedUsers.length === 0}
                                         className="bg-blue-600 text-white text-xs px-3 py-2 rounded hover:bg-blue-500 disabled:opacity-50"
                                     >
-                                        Utwórz
+                                        {t('create')}
                                     </button>
                                 )}
                             </div>
@@ -239,7 +241,7 @@ export default function ChatModal({
                                         onChange={(e) => setIsGroupMode(e.target.checked)}
                                         className="mr-2 rounded bg-gray-700 border-gray-600 text-blue-600 focus:ring-0"
                                     />
-                                    Tryb grupowy
+                                    {t('groupMode')}
                                 </label>
                             </div>
 
@@ -259,7 +261,7 @@ export default function ChatModal({
                                     type="text"
                                     value={groupName}
                                     onChange={(e) => setGroupName(e.target.value)}
-                                    placeholder="Nazwa grupy (opcjonalnie)"
+                                    placeholder={t('groupNameOptional')}
                                     className="w-full p-2 bg-gray-800 border border-gray-600 rounded text-xs text-white mb-2"
                                 />
                             )}
@@ -289,7 +291,7 @@ export default function ChatModal({
                         <ul>
                             {chatRooms.map(room => {
                                 const partner = getPrivateChatPartner(room);
-                                const roomName = room.type === 'GROUP' ? room.name : (partner?.username || 'Czat prywatny');
+                                const roomName = room.type === 'GROUP' ? room.name : (partner?.username || t('privateChat'));
                                 const roomPic = room.type === 'PRIVATE' ? partner?.profilePictureUrl : null;
                                 const unreadCount = unreadMessages[room.id] || 0;
 
@@ -318,7 +320,7 @@ export default function ChatModal({
                                                         {room.type === 'GROUP' && <span className="text-blue-400 mr-1">{room.lastMessage.sender.username}:</span>}
                                                         {room.lastMessage.content}
                                                     </>
-                                                ) : "Rozpocznij konwersację"}
+                                                ) : t('startConversation')}
                                             </p>
                                         </div>
                                         {unreadCount > 0 && (
@@ -398,7 +400,7 @@ export default function ChatModal({
                                         type="text"
                                         value={messageContent}
                                         onChange={(e) => setMessageContent(e.target.value)}
-                                        placeholder="Napisz wiadomość..."
+                                        placeholder={t('writeMessage')}
                                         className="flex-1 p-3 bg-gray-800 border border-gray-700 rounded-full outline-none text-white"
                                         maxLength={500}
                                     />
@@ -410,8 +412,8 @@ export default function ChatModal({
                         </>
                     ) : (
                         <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
-                            <h2 className="text-xl">Wybierz czat</h2>
-                            <p>Lub rozpocznij nową konwersację.</p>
+                            <h2 className="text-xl">{t('selectChat')}</h2>
+                            <p>{t('startNewConversation')}</p>
                             <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
                                 <CloseIcon />
                             </button>
@@ -424,6 +426,7 @@ export default function ChatModal({
 }
 
 function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickname }) {
+    const { t } = useTranslation();
     const sender = message.sender;
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -481,13 +484,13 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
                                     onClick={() => { setIsEditing(true); setIsMenuOpen(false); }}
                                     className="block w-full text-left px-4 py-2 text-sm hover:bg-gray-700 text-white"
                                 >
-                                    Edytuj
+                                    {t('edit')}
                                 </button>
                                 <button
                                     onClick={handleDelete}
                                     className="block w-full text-left px-4 py-2 text-sm hover:bg-red-900/50 text-red-400"
                                 >
-                                    Usuń
+                                    {t('delete')}
                                 </button>
                             </div>
                         </>
@@ -517,14 +520,14 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
                                 rows={2}
                             />
                             <div className="flex justify-end space-x-2 text-xs">
-                                <button onClick={handleCancelEdit} className="text-gray-400 hover:text-white">Anuluj</button>
-                                <button onClick={handleSaveEdit} className="text-blue-400 hover:text-blue-300 font-semibold">Zapisz</button>
+                                <button onClick={handleCancelEdit} className="text-gray-400 hover:text-white">{t('cancel')}</button>
+                                <button onClick={handleSaveEdit} className="text-blue-400 hover:text-blue-300 font-semibold">{t('save')}</button>
                             </div>
                         </div>
                     ) : (
                         <>
                             {isDeleted ? (
-                                <p className="text-sm select-none">Wiadomość usunięta</p>
+                                <p className="text-sm select-none">{t('messageDeleted')}</p>
                             ) : (
                                 <p className="break-words whitespace-pre-wrap">
                                     {message.content}
@@ -532,7 +535,7 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
                             )}
 
                             {!isDeleted && message.edited && (
-                                <span className="text-xs text-gray-400 mt-1 block text-right">(Edytowano)</span>
+                                <span className="text-xs text-gray-400 mt-1 block text-right">{t('editedStatus')}</span>
                             )}
                         </>
                     )}

@@ -1,6 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
-import { I18nextProvider } from 'react-i18next';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { setupNotifications } from './firebaseMessaging';
 import { apiClient } from './api/apiClient.js';
@@ -19,14 +18,19 @@ import { auth } from './firebaseConfig';
 let stompClient = null;
 
 export default function AppWrapper() {
+    useEffect(() => {
+        const savedLanguage = localStorage.getItem('app_language');
+        if (savedLanguage) {
+            i18n.changeLanguage(savedLanguage);
+        }
+    }, []);
+
     return (
-        <I18nextProvider i18n={i18n}>
             <Suspense fallback={<div className="bg-black text-white flex items-center justify-center h-screen">Loading...</div>}>
                 <Router>
                     <App />
                 </Router>
             </Suspense>
-        </I18nextProvider>
     );
 }
 
@@ -48,7 +52,6 @@ function App() {
     const [isMarkingAsRead, setIsMarkingAsRead] = useState(false);
 
     const [activeChatRoomId, setActiveChatRoomId] = useState(null);
-
 
     const totalUnreadChats = Object.values(unreadMessages).reduce((a, b) => a + b, 0);
 
@@ -96,7 +99,7 @@ function App() {
 
         try {
             const token = await user.getIdToken();
-            const response = await apiClient('/notifications/${notification.id}/read', {
+            const response = await apiClient(`/notifications/${notification.id}/read`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}` },
             });
@@ -362,7 +365,6 @@ function App() {
                 onLinkClick={handleToastLinkClick}
                 onClose={handleToastClose}
             />
-
             <Routes>
                 <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
                 <Route

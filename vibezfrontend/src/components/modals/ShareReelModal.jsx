@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../api/apiClient';
 
 const CloseIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>);
@@ -6,6 +7,7 @@ const SearchIcon = () => (<svg className="w-5 h-5 text-gray-400" fill="none" str
 const CheckIcon = () => (<svg className="w-4 h-4 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>);
 
 export default function ShareReelModal({ isOpen, onClose, reel, appUser, user }) {
+    const { t } = useTranslation();
     const [chats, setChats] = useState([]);
     const [selectedChatId, setSelectedChatId] = useState(null);
     const [messageText, setMessageText] = useState("");
@@ -58,7 +60,7 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    content: messageText || "Udostępniono rolkę",
+                    content: messageText || t('shareReelDefaultMessage'),
                     reelId: reel.id
                 })
             });
@@ -76,7 +78,7 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
     const filteredChats = chats.filter(chat => {
         const name = chat.type === 'GROUP'
             ? chat.name
-            : chat.participants.find(p => p.username !== appUser?.username)?.username || "Nieznany";
+            : chat.participants.find(p => p.username !== appUser?.username)?.username || t('unknownUser');
         return name.toLowerCase().includes(searchQuery.toLowerCase());
     });
 
@@ -87,7 +89,7 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
             <div className="bg-zinc-900 w-full max-w-md rounded-xl border border-gray-800 shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
 
                 <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-black/20">
-                    <h2 className="text-lg font-bold text-white">Udostępnij</h2>
+                    <h2 className="text-lg font-bold text-white">{t('share')}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors"><CloseIcon /></button>
                 </div>
 
@@ -98,7 +100,7 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
 
                     <div className="flex-1 flex flex-col">
                         <textarea
-                            placeholder="Napisz wiadomość..."
+                            placeholder={t('writeMessagePlaceholder')}
                             className="w-full h-full bg-gray-800 border border-gray-700 rounded-lg p-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-gray-500 focus:bg-gray-700 transition-colors resize-none"
                             value={messageText}
                             maxLength={MAX_CHARS}
@@ -119,7 +121,7 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
                         </div>
                         <input
                             type="text"
-                            placeholder="Szukaj..."
+                            placeholder={t('searchPlaceholderShort')}
                             className="w-full pl-10 pr-4 py-2 bg-black/50 border border-gray-700 rounded-lg text-sm text-white focus:outline-none focus:border-gray-500 transition-colors placeholder-gray-600"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
@@ -129,9 +131,9 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
 
                 <div className="flex-1 overflow-y-auto p-2 bg-zinc-900">
                     {isLoading ? (
-                        <div className="text-center py-8 text-gray-500 text-sm">Ładowanie czatów...</div>
+                        <div className="text-center py-8 text-gray-500 text-sm">{t('loadingChats')}</div>
                     ) : filteredChats.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500 text-sm">Brak dostępnych czatów.</div>
+                        <div className="text-center py-8 text-gray-500 text-sm">{t('noChatsAvailable')}</div>
                     ) : (
                         <div className="space-y-1">
                             {filteredChats.map(chat => {
@@ -183,7 +185,7 @@ export default function ShareReelModal({ isOpen, onClose, reel, appUser, user })
                         disabled={!selectedChatId || isSending}
                         className="w-full py-3 bg-white hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed text-black font-bold rounded-lg transition-colors shadow-lg"
                     >
-                        {isSending ? 'Wysyłanie...' : 'Wyślij'}
+                        {isSending ? t('sending') : t('send')}
                     </button>
                 </div>
             </div>

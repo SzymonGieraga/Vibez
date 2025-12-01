@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../api/apiClient';
 
 export default function FollowListModal({ mode, profileUsername, currentUsername, onClose, onFollowUpdate }) {
+    const { t } = useTranslation();
     const [users, setUsers] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
@@ -69,15 +71,15 @@ export default function FollowListModal({ mode, profileUsername, currentUsername
                 onClick={e => e.stopPropagation()}
             >
                 <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-xl font-bold capitalize">{mode}</h2>
+                    <h2 className="text-xl font-bold capitalize">{t(mode)}</h2>
                     <button onClick={onClose} className="text-gray-400 hover:text-white">&times;</button>
                 </div>
 
                 <div className="flex-1 overflow-y-auto space-y-4 pr-2">
                     {isLoading ? (
-                        <p className="text-gray-400 text-center">Loading...</p>
+                        <p className="text-gray-400 text-center">{t('loading')}</p>
                     ) : users.length === 0 ? (
-                        <p className="text-gray-400 text-center">No users found.</p>
+                        <p className="text-gray-400 text-center">{t('noUsersFound')}</p>
                     ) : (
                         users.map((user, index) => (
                             <UserListItem
@@ -96,6 +98,7 @@ export default function FollowListModal({ mode, profileUsername, currentUsername
 }
 
 function UserListItem({ user, currentUsername, onToggleFollow, onNavigate }) {
+    const { t } = useTranslation();
     const isCurrentUser = user.username === currentUsername;
 
     return (
@@ -121,7 +124,7 @@ function UserListItem({ user, currentUsername, onToggleFollow, onNavigate }) {
                             : 'bg-white hover:bg-gray-200 text-black'
                     } transition-colors flex-shrink-0`}
                 >
-                    {user.isFollowedByCurrentUser ? 'Following' : 'Follow'}
+                    {user.isFollowedByCurrentUser ? t('followingState') : t('follow')}
                 </button>
             )}
         </div>

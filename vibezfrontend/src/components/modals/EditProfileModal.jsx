@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../../api/apiClient';
 
 export default function EditProfileModal({ user, onClose, onProfileUpdate }) {
+    const { t } = useTranslation();
     const [newUsername, setNewUsername] = useState(user.username);
     const [bio, setBio] = useState(user.bio || '');
     const [profilePicFile, setProfilePicFile] = useState(null);
@@ -30,10 +32,10 @@ export default function EditProfileModal({ user, onClose, onProfileUpdate }) {
             });
 
             if (updateRes.status === 409) {
-                throw new Error('Username already taken.');
+                throw new Error(t('usernameTaken'));
             }
             if (!updateRes.ok) {
-                throw new Error('Failed to update profile.');
+                throw new Error(t('updateProfileFailed'));
             }
 
             const updatedProfile = await updateRes.json();
@@ -55,10 +57,10 @@ export default function EditProfileModal({ user, onClose, onProfileUpdate }) {
     return (
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
             <div className="bg-gray-900 border border-gray-700 p-8 rounded-lg shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-bold mb-6">Edit Profile</h2>
+                <h2 className="text-xl font-bold mb-6">{t('editProfile')}</h2>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-400">Username</label>
+                        <label className="block text-sm font-medium text-gray-400">{t('username')}</label>
                         <input
                             type="text"
                             value={newUsername}
@@ -68,7 +70,7 @@ export default function EditProfileModal({ user, onClose, onProfileUpdate }) {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Profile Picture</label>
+                        <label className="block text-sm font-medium text-gray-400 mb-2">{t('profilePicture')}</label>
                         <input
                             type="file"
                             accept="image/*"
@@ -77,7 +79,7 @@ export default function EditProfileModal({ user, onClose, onProfileUpdate }) {
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-gray-400">Bio</label>
+                        <label className="block text-sm font-medium text-gray-400">{t('bio')}</label>
                         <textarea
                             value={bio}
                             onChange={(e) => setBio(e.target.value)}
@@ -93,14 +95,14 @@ export default function EditProfileModal({ user, onClose, onProfileUpdate }) {
                             disabled={isUploading}
                             className="mr-4 py-2 px-4 text-sm font-medium text-gray-400 hover:text-white"
                         >
-                            Cancel
+                            {t('cancel')}
                         </button>
                         <button
                             type="submit"
                             disabled={isUploading}
                             className="py-2 px-6 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 disabled:bg-gray-500"
                         >
-                            {isUploading ? 'Saving...' : 'Save'}
+                            {isUploading ? t('saving') : t('save')}
                         </button>
                     </div>
                 </form>

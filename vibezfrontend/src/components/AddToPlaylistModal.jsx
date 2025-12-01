@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
 
 const LoadingSpinner = () => <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>;
@@ -16,6 +17,7 @@ const PlusIcon = () => (
 );
 
 export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
+    const { t } = useTranslation();
     const [playlists, setPlaylists] = useState([]);
     const [playlistsWithReel, setPlaylistsWithReel] = useState(new Set());
     const [isLoading, setIsLoading] = useState(true);
@@ -71,7 +73,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
 
     const handleToggleReel = async (playlistId, isInPlaylist) => {
         setProcessingPlaylistId(playlistId);
-        setMessage({ text: isInPlaylist ? 'Removing...' : 'Adding...', isError: false });
+        setMessage({ text: isInPlaylist ? t('removing') : t('adding'), isError: false });
 
         try {
             const method = isInPlaylist ? 'DELETE' : 'POST';
@@ -88,7 +90,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
             });
 
             setMessage({
-                text: isInPlaylist ? 'Removed from playlist!' : 'Added to playlist!',
+                text: isInPlaylist ? t('removedFromPlaylist') : t('addedToPlaylist'),
                 isError: false
             });
 
@@ -104,7 +106,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
     };
 
     const handleCreateAndAdd = async (formData) => {
-        setMessage({ text: 'Creating playlist...', isError: false });
+        setMessage({ text: t('creatingPlaylist'), isError: false });
         try {
             const params = new URLSearchParams({
                 username: appUser.username,
@@ -128,7 +130,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
         <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
             <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="mb-4">
-                    <h2 className="text-xl font-bold">Add to Playlist</h2>
+                    <h2 className="text-xl font-bold">{t('addToPlaylist')}</h2>
                     {reelToAdd && (
                         <p className="text-sm text-gray-400 mt-1">
                             {reelToAdd.songTitle} - {reelToAdd.author}
@@ -158,7 +160,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                             className="w-full text-left py-3 px-4 mb-3 bg-blue-600 hover:bg-blue-500 rounded-lg font-semibold flex items-center gap-2 transition-colors"
                         >
                             <PlusIcon />
-                            <span>Create New Playlist</span>
+                            <span>{t('createNewPlaylist')}</span>
                         </button>
 
                         <div className="flex-1 overflow-y-auto space-y-2">
@@ -192,7 +194,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                                                     )}
                                                 </div>
                                                 <p className="text-xs text-gray-400 mt-1">
-                                                    {playlist.reelCount || 0} {playlist.reelCount === 1 ? 'reel' : 'reels'}
+                                                    {t('reelCount', { count: playlist.reelCount || 0 })}
                                                 </p>
                                             </div>
                                             <div className="ml-3">
@@ -212,12 +214,12 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                                     <svg className="w-12 h-12 mx-auto mb-3 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                                     </svg>
-                                    <p className="text-gray-400 mb-4">You don't have any playlists yet.</p>
+                                    <p className="text-gray-400 mb-4">{t('noPlaylistsYet')}</p>
                                     <button
                                         onClick={() => setShowCreateForm(true)}
                                         className="text-blue-400 hover:text-blue-300 font-semibold"
                                     >
-                                        Create your first playlist
+                                        {t('createFirstPlaylist')}
                                     </button>
                                 </div>
                             )}
@@ -228,7 +230,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
                                 onClick={onClose}
                                 className="w-full py-2 px-4 text-sm font-medium text-gray-400 hover:text-white transition-colors"
                             >
-                                Close
+                                {t('close')}
                             </button>
                         </div>
                     </>
@@ -239,6 +241,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
 }
 
 function CreatePlaylistForm({ onSubmit, onCancel }) {
+    const { t } = useTranslation();
     const [name, setName] = useState('');
     const [description, setDescription] = useState('');
     const [isPublic, setIsPublic] = useState(true);
@@ -256,17 +259,17 @@ function CreatePlaylistForm({ onSubmit, onCancel }) {
     return (
         <form onSubmit={handleSubmit} className="space-y-4">
             <FormInput
-                label="Playlist Name"
+                label={t('playlistName')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="My awesome playlist"
+                placeholder={t('playlistNamePlaceholder')}
                 required
             />
             <FormTextarea
-                label="Description (optional)"
+                label={t('playlistDescription')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Describe your playlist..."
+                placeholder={t('playlistDescriptionPlaceholder')}
                 rows={3}
             />
             <div className="flex items-center gap-2 p-3 bg-gray-800 rounded-lg">
@@ -278,7 +281,7 @@ function CreatePlaylistForm({ onSubmit, onCancel }) {
                     className="h-4 w-4 rounded bg-gray-700 border-gray-600 text-blue-500 focus:ring-blue-600 focus:ring-offset-gray-900"
                 />
                 <label htmlFor="isPublic" className="text-sm text-gray-300 cursor-pointer">
-                    Make playlist public
+                    {t('makePublic')}
                 </label>
             </div>
             <div className="flex justify-end gap-2 pt-2">
@@ -288,7 +291,7 @@ function CreatePlaylistForm({ onSubmit, onCancel }) {
                     disabled={isSubmitting}
                     className="py-2 px-4 text-sm font-medium text-gray-400 hover:text-white disabled:opacity-50"
                 >
-                    Cancel
+                    {t('cancel')}
                 </button>
                 <button
                     type="submit"
@@ -298,10 +301,10 @@ function CreatePlaylistForm({ onSubmit, onCancel }) {
                     {isSubmitting ? (
                         <>
                             <LoadingSpinner />
-                            <span>Creating...</span>
+                            <span>{t('creating')}</span>
                         </>
                     ) : (
-                        'Create & Add'
+                        t('createAndAdd')
                     )}
                 </button>
             </div>
