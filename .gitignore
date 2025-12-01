@@ -68,3 +68,7 @@ vibezbackend/src/main/resources/application.properties
 /xdp.txt
 /vibezbackend/gcp-key.json
 /vibezbackend/src/main/resources/gcp-key.json
+/vibezbackend/src/main/resources/serviceAccountKey.json
+/vibezfrontend/public/firebase-messaging-sw.js
+/vibezfrontend/.env
+/vibezfrontend/.env.productions

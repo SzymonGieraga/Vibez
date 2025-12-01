@@ -1,18 +1,24 @@
 package com.vibez.controller;
 
 import com.vibez.dto.SyncUserRequest;
-import com.vibez.dto.UpdateUserRequest;
 import com.vibez.model.User;
+import com.vibez.repository.DeviceTokenRepository;
 import com.vibez.service.ImageStorageService;
 import com.vibez.repository.UserRepository;
+import jakarta.persistence.EntityNotFoundException;
+import jakarta.transaction.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.vibez.model.DeviceToken;
+import java.security.Principal;
 
 import org.springframework.web.multipart.MultipartFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.io.OutputStream;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -21,10 +27,12 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final ImageStorageService imageStorageService;
+    private final DeviceTokenRepository deviceTokenRepository;
 
-    public UserController(UserRepository userRepository, ImageStorageService imageStorageService) {
+    public UserController(UserRepository userRepository, ImageStorageService imageStorageService,  DeviceTokenRepository deviceTokenRepository) {
         this.userRepository = userRepository;
         this.imageStorageService = imageStorageService;
+        this.deviceTokenRepository = deviceTokenRepository;
     }
 
     @GetMapping("/generate-profile-picture-url")
@@ -113,5 +121,40 @@ public class UserController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Error updating profile: " + e.getMessage());
         }
+    }
+    @PostMapping("/me/register-device-token")
+    @Transactional
+    public ResponseEntity<?> registerDeviceToken(
+            @AuthenticationPrincipal User user,
+            @RequestBody String tokenString) {
+
+        if (user == null) {
+            return ResponseEntity.status(401).body("Brak autoryzacji");
+        }
+
+        if (tokenString == null || tokenString.isEmpty()) {
+            return ResponseEntity.badRequest().body("Token nie może być pusty");
+        }
+
+        try {
+            if (deviceTokenRepository.findByToken(tokenString).isPresent()) {
+                return ResponseEntity.ok("Token już zarejestrowany");
+            }
+            DeviceToken deviceToken = new DeviceToken(tokenString, user);
+            deviceTokenRepository.save(deviceToken);
+
+            return ResponseEntity.ok("Token zarejestrowany pomyślnie");
+
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Błąd serwera podczas zapisywania tokena: " + e.getMessage());
+        }
+    }
+    @GetMapping("/search")
+    public ResponseEntity<List<User>> searchUsers(@RequestParam String query) {
+        if (query == null || query.trim().length() < 2) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<User> users = userRepository.findByUsernameContainingIgnoreCaseOrEmailContainingIgnoreCase(query, query);
+        return ResponseEntity.ok(users);
     }
 }
