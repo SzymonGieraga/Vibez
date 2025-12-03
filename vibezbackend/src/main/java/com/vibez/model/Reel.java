@@ -98,6 +98,8 @@ public class Reel {
     public void setChatMessages(List<ChatMessage> chatMessages) {this.chatMessages = chatMessages;}
     public long getViewCount() { return viewCount; }
     public void setViewCount(long viewCount) { this.viewCount = viewCount; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
 
     public void decrementLikeCount() {
         if (this.likeCount > 0) {
