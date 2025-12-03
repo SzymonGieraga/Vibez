@@ -174,5 +174,13 @@
   "publicPlaylist": "Playlista publiczna",
   "deletePlaylistConfirm": "Czy na pewno chcesz usunąć \"{{name}}\"? Tej operacji nie można cofnąć.",
   "deleting": "Usuwanie...",
-  "deletePlaylist": "Usuń playlistę"
+  "deletePlaylist": "Usuń playlistę",
+  "enterSongTitle": "Wpisz tytuł utworu",
+  "enterArtist": "Wpisz wykonawcę",
+  "optionalGenre": "np. Pop, Rock (Opcjonalne)",
+  "descriptionPlaceholder": "Napisz coś o swojej rolce...",
+  "generating": "Generowanie...",
+  "autoFillWithAI": "Wypełnij za pomocą AI",
+  "aiGenerationMissingFields": "Uzupełnij tytuł utworu i autora, aby użyć AI.",
+  "aiGenerationError": "Błąd generowania AI. Spróbuj ponownie."
 }

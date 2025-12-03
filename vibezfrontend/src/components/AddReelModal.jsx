@@ -325,6 +325,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
         tags: ''
     });
     const [uploading, setUploading] = useState(false);
+    const [isGeneratingAi, setIsGeneratingAi] = useState(false);
     const [uploadProgress, setUploadProgress] = useState('');
     const [error, setError] = useState('');
 
@@ -344,6 +345,47 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
     const handleThumbnailSourceChange = (source) => {
         setThumbnailSource(source);
         setThumbnailFile(null);
+    };
+
+    const handleAiGenerate = async () => {
+        if (!formData.songTitle || !formData.author) {
+            setError(t('aiGenerationMissingFields'));
+            return;
+        }
+
+        setIsGeneratingAi(true);
+        setError('');
+
+        try {
+            const response = await apiClient('/ai/generate-metadata', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    songTitle: formData.songTitle,
+                    author: formData.author,
+                    genre: formData.genre
+                })
+            });
+
+            if (!response.ok) {
+                throw new Error('AI Generation failed');
+            }
+
+            const data = await response.json();
+
+            setFormData(prev => ({
+                ...prev,
+                description: data.description,
+                tags: data.tags
+            }));
+        } catch (err) {
+            console.error(err);
+            setError(t('aiGenerationError'));
+        } finally {
+            setIsGeneratingAi(false);
+        }
     };
 
     const handleSubmit = async (e) => {
@@ -435,6 +477,16 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                     animation: shimmer 3s ease-in-out infinite, pulse-glow 2s ease-in-out infinite;
                 }
                 
+                @keyframes ai-pulse {
+                    0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.7); }
+                    70% { box-shadow: 0 0 0 10px rgba(168, 85, 247, 0); }
+                    100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+                }
+
+                .ai-button:hover:not(:disabled) {
+                    animation: ai-pulse 1.5s infinite;
+                }
+                
                 @keyframes dots {
                     0%, 20% { content: '.'; }
                     40% { content: '..'; }
@@ -448,36 +500,62 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
             `}</style>
 
             <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <h2 className="text-xl font-bold mb-6">{t('addNewReel')}</h2>
+                <div className="flex justify-between items-center mb-6">
+                    <h2 className="text-xl font-bold">{t('addNewReel')}</h2>
+                    <button
+                        type="button"
+                        onClick={handleAiGenerate}
+                        disabled={isGeneratingAi || !formData.songTitle || !formData.author}
+                        className="ai-button flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full text-xs font-bold text-white hover:from-purple-500 hover:to-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    >
+                        {isGeneratingAi ? (
+                            <>
+                                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                <span>{t('generating')}</span>
+                            </>
+                        ) : (
+                            <>
+                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                </svg>
+                                <span>{t('autoFillWithAI')}</span>
+                            </>
+                        )}
+                    </button>
+                </div>
+
                 <form onSubmit={handleSubmit} className="space-y-4">
-                    <FormInput
-                        label={t('songTitle')}
-                        name="songTitle"
-                        value={formData.songTitle}
-                        onChange={handleInputChange}
-                        required
-                    />
-                    <FormInput
-                        label={t('author')}
-                        name="author"
-                        value={formData.author}
-                        onChange={handleInputChange}
-                        required
-                    />
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormInput
+                            label={t('songTitle')}
+                            name="songTitle"
+                            value={formData.songTitle}
+                            onChange={handleInputChange}
+                            required
+                            placeholder={t('enterSongTitle')}
+                        />
+                        <FormInput
+                            label={t('author')}
+                            name="author"
+                            value={formData.author}
+                            onChange={handleInputChange}
+                            required
+                            placeholder={t('enterArtist')}
+                        />
+                    </div>
+
                     <FormInput
                         label={t('genre')}
                         name="genre"
                         value={formData.genre}
                         onChange={handleInputChange}
+                        placeholder={t('optionalGenre')}
                     />
-                    <FormInput
-                        label={t('tagsCommaSeparated')}
-                        name="tags"
-                        value={formData.tags}
-                        onChange={handleInputChange}
-                        placeholder={t('tagsPlaceholder')}
-                    />
-                    <div>
+
+                    <div className="relative">
                         <label className="block text-sm font-medium text-gray-400">{t('description')}</label>
                         <textarea
                             name="description"
@@ -485,9 +563,21 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                             onChange={handleInputChange}
                             required
                             rows="3"
-                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500"
+                            placeholder={t('descriptionPlaceholder')}
+                            className="mt-1 block w-full bg-black border border-gray-700 rounded-md shadow-sm py-2 px-3 text-white focus:outline-none focus:ring-1 focus:ring-gray-500 transition-colors"
                         />
                     </div>
+
+                    <div className="relative">
+                        <FormInput
+                            label={t('tagsCommaSeparated')}
+                            name="tags"
+                            value={formData.tags}
+                            onChange={handleInputChange}
+                            placeholder={t('tagsPlaceholder')}
+                        />
+                    </div>
+
                     <FileInput
                         label={t('videoFileLabel')}
                         accept="video/*"

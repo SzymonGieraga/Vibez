@@ -170,5 +170,13 @@
   "publicPlaylist": "Public Playlist",
   "deletePlaylistConfirm": "Are you sure you want to delete \"{{name}}\"? This cannot be undone.",
   "deleting": "Deleting...",
-  "deletePlaylist": "Delete Playlist"
+  "deletePlaylist": "Delete Playlist",
+  "enterSongTitle": "Enter song title",
+  "enterArtist": "Enter artist name",
+  "optionalGenre": "e.g. Pop, Rock (Optional)",
+  "descriptionPlaceholder": "Write something about your reel...",
+  "generating": "Generating...",
+  "autoFillWithAI": "Auto-fill with AI",
+  "aiGenerationMissingFields": "Fill in Song Title and Author to use AI.",
+  "aiGenerationError": "AI Generation failed. Please try again."
 }
