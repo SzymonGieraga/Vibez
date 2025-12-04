@@ -71,4 +71,4 @@ vibezbackend/src/main/resources/application.properties
 /vibezbackend/src/main/resources/serviceAccountKey.json
 /vibezfrontend/public/firebase-messaging-sw.js
 /vibezfrontend/.env
-/vibezfrontend/.env.productions
+/vibezfrontend/.env.production

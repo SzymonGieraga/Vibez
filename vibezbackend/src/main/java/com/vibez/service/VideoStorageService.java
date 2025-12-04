@@ -142,16 +142,7 @@ public class VideoStorageService {
                 String frameFileName = videoFileName.replace(".mp4", "_frame_" + i + ".jpg");
                 Path framePath = tempDir.resolve("frame_" + i + ".jpg");
 
-                // Extract frame at specific timestamp
                 FFmpegBuilder builder = new FFmpegBuilder()
-                        .setInput(videoFile.getAbsolutePath())
-                        .addOutput(framePath.toString())
-                        .setFrames(1)
-                        .setVideoFilter("select='eq(n\\," + (int)(timestamp * 30) + ")'")
-                        .setStartOffset((long)(timestamp * 1000), java.util.concurrent.TimeUnit.MILLISECONDS)
-                        .done();
-
-                builder = new FFmpegBuilder()
                         .setInput(videoFile.getAbsolutePath())
                         .addExtraArgs("-ss", String.valueOf(timestamp))
                         .addOutput(framePath.toString())

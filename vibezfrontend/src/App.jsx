@@ -2,10 +2,9 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { setupNotifications } from './firebaseMessaging';
-import { apiClient } from './api/apiClient.js';
+import { apiClient, initWebSocket } from './api/apiClient.js';
 
 import { Stomp } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
 
 import i18n from './i18n';
 import AuthPage from './pages/AuthPage';
@@ -26,11 +25,11 @@ export default function AppWrapper() {
     }, []);
 
     return (
-            <Suspense fallback={<div className="bg-black text-white flex items-center justify-center h-screen">Loading...</div>}>
-                <Router>
-                    <App />
-                </Router>
-            </Suspense>
+        <Suspense fallback={<div className="bg-black text-white flex items-center justify-center h-screen">Loading...</div>}>
+            <Router>
+                <App />
+            </Router>
+        </Suspense>
     );
 }
 
@@ -62,14 +61,12 @@ function App() {
 
     const fetchNotifications = async (token) => {
         try {
-            const response = await apiClient ('/notifications', {
+            const response = await apiClient('/notifications', {
                 headers: { 'Authorization': `Bearer ${token}` },
                 cache: 'no-store'
             });
-            if (response.ok) {
-                const data = await response.json();
-                setNotifications(data);
-            }
+            const data = await response.json();
+            setNotifications(data);
         } catch (error) {
             console.error("Błąd fetchNotifications:", error);
         }
@@ -139,13 +136,11 @@ function App() {
 
     const fetchChatRooms = async (token) => {
         try {
-            const response = await fetch('http://localhost:8080/api/chats', {
+            const response = await apiClient('/chats', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (response.ok) {
-                const data = await response.json();
-                setChatRooms(data);
-            }
+            const data = await response.json();
+            setChatRooms(data);
         } catch (error) {
             console.error("Błąd fetchChatRooms:", error);
         }
@@ -155,18 +150,16 @@ function App() {
         if (!user) return;
         try {
             const token = await user.getIdToken();
-            const response = await fetch(`http://localhost:8080/api/chats/${chatId}/messages?page=${page}&size=${size}`, {
+            const response = await apiClient(`/chats/${chatId}/messages?page=${page}&size=${size}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
-            if (response.ok) {
-                const data = await response.json();
-                setChatMessages(prev => {
-                    const existingIds = new Set((prev[chatId] || []).map(m => m.id));
-                    const newMessages = data.content.filter(m => !existingIds.has(m.id));
-                    return { ...prev, [chatId]: [...newMessages.reverse(), ...(prev[chatId] || [])] };
-                });
-                return data;
-            }
+            const data = await response.json();
+            setChatMessages(prev => {
+                const existingIds = new Set((prev[chatId] || []).map(m => m.id));
+                const newMessages = data.content.filter(m => !existingIds.has(m.id));
+                return { ...prev, [chatId]: [...newMessages.reverse(), ...(prev[chatId] || [])] };
+            });
+            return data;
         } catch (error) {
             console.error("Błąd fetchChatHistory:", error);
         }
@@ -176,107 +169,106 @@ function App() {
         if (!user) return null;
         const token = await user.getIdToken();
         try {
-            const response = await fetch('http://localhost:8080/api/chats/private', {
+            const response = await apiClient('/chats/private', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    'Authorization': `Bearer ${token}`
                 },
                 body: JSON.stringify({ participantUsername })
             });
-            if (response.ok) {
-                const newRoom = await response.json();
-                setChatRooms(prev => {
-                    if (prev.find(r => r.id === newRoom.id)) return prev;
-                    return [newRoom, ...prev];
-                });
-                return newRoom;
-            }
-        } catch (error) { console.error("Błąd createOrGetPrivateChat:", error); }
+            const newRoom = await response.json();
+            setChatRooms(prev => {
+                if (prev.find(r => r.id === newRoom.id)) return prev;
+                return [newRoom, ...prev];
+            });
+            return newRoom;
+        } catch (error) {
+            console.error("Błąd createOrGetPrivateChat:", error);
+        }
         return null;
     };
 
     const connectWebSocket = (token) => {
-        try {
-            stompClient = Stomp.over(function () { return new SockJS('http://localhost:8080/ws'); });
-            stompClient.debug = () => {};
-            const headers = { 'Authorization': `Bearer ${token}` };
+        if (stompClient && stompClient.active) return;
 
-            stompClient.connect(headers, (frame) => {
-                stompClient.subscribe('/user/queue/notifications', (message) => {
-                    const notificationDto = JSON.parse(message.body);
-                    setNotifications(prevList => {
-                        const exists = prevList.some(n => n.id === notificationDto.id);
-                        if (exists) return prevList;
-                        return [notificationDto, ...prevList];
-                    });
-                    if (!notificationDto.read) {
-                        setLastNotification(notificationDto);
-                    }
+        stompClient = initWebSocket(token, (client) => {
+            client.subscribe('/user/queue/notifications', (message) => {
+                const notificationDto = JSON.parse(message.body);
+                setNotifications(prevList => {
+                    const exists = prevList.some(n => n.id === notificationDto.id);
+                    if (exists) return prevList;
+                    return [notificationDto, ...prevList];
                 });
-
-                stompClient.subscribe('/user/queue/chat-messages', (message) => {
-                    const messageDto = JSON.parse(message.body);
-                    const roomId = messageDto.chatRoomId;
-
-                    setChatMessages(prev => ({
-                        ...prev,
-                        [roomId]: [...(prev[roomId] || []), messageDto]
-                    }));
-
-                    if (messageDto.sender.username !== appUser?.username) {
-                        setUnreadMessages(prev => ({
-                            ...prev,
-                            [roomId]: (prev[roomId] || 0) + 1
-                        }));
-                    }
-                });
-
-                stompClient.subscribe('/user/queue/chat-updates', (payload) => {
-                    const update = JSON.parse(payload.body);
-                    const roomId = update.chatRoomId;
-                    setChatMessages(prev => {
-                        const currentMessages = prev[roomId] || [];
-                        if (update.type === 'EDIT' || update.type === 'DELETE') {
-                            return {
-                                ...prev,
-                                [roomId]: currentMessages.map(msg => msg.id === update.message.id ? update.message : msg)
-                            };
-                        }
-                        return prev;
-                    });
-                });
-
-            }, (error) => {
-                setTimeout(() => connectWebSocket(token), 5000);
+                if (!notificationDto.read) {
+                    setLastNotification(notificationDto);
+                }
             });
-        } catch (error) {
-            console.error("WebSocket init error:", error);
-        }
+
+            client.subscribe('/user/queue/chat-messages', (message) => {
+                const messageDto = JSON.parse(message.body);
+                const roomId = messageDto.chatRoomId;
+
+                setChatMessages(prev => ({
+                    ...prev,
+                    [roomId]: [...(prev[roomId] || []), messageDto]
+                }));
+
+                if (messageDto.sender.username !== appUser?.username) {
+                    setUnreadMessages(prev => ({
+                        ...prev,
+                        [roomId]: (prev[roomId] || 0) + 1
+                    }));
+                }
+            });
+
+            client.subscribe('/user/queue/chat-updates', (payload) => {
+                const update = JSON.parse(payload.body);
+                const roomId = update.chatRoomId;
+                setChatMessages(prev => {
+                    const currentMessages = prev[roomId] || [];
+                    if (update.type === 'EDIT' || update.type === 'DELETE') {
+                        return {
+                            ...prev,
+                            [roomId]: currentMessages.map(msg => msg.id === update.message.id ? update.message : msg)
+                        };
+                    }
+                    return prev;
+                });
+            });
+        });
     };
 
     const disconnectWebSocket = () => {
         if (stompClient) {
-            stompClient.disconnect();
+            stompClient.deactivate();
             stompClient = null;
         }
     };
 
     const sendChatMessage = (chatId, content, reelId = null) => {
         if (stompClient && stompClient.connected) {
-            stompClient.send(`/app/chat/${chatId}/send`, {}, JSON.stringify({ content, reelId }));
+            stompClient.publish({
+                destination: `/app/chat/${chatId}/send`,
+                body: JSON.stringify({ content, reelId })
+            });
         }
     };
 
     const editChatMessage = (messageId, newContent) => {
         if (stompClient && stompClient.connected) {
-            stompClient.send(`/app/chat/edit`, {}, JSON.stringify({ messageId, newContent }));
+            stompClient.publish({
+                destination: `/app/chat/edit`,
+                body: JSON.stringify({ messageId, newContent })
+            });
         }
     };
 
     const deleteChatMessage = (messageId) => {
         if (stompClient && stompClient.connected) {
-            stompClient.send(`/app/chat/delete`, {}, JSON.stringify({ messageId }));
+            stompClient.publish({
+                destination: `/app/chat/delete`,
+                body: JSON.stringify({ messageId })
+            });
         }
     };
 
@@ -297,13 +289,9 @@ function App() {
                 })
             });
 
-            if (response.ok) {
-                const newRoom = await response.json();
-                setChatRooms(prev => [newRoom, ...prev]);
-                return newRoom;
-            } else {
-                console.error("Błąd tworzenia grupy", await response.text());
-            }
+            const newRoom = await response.json();
+            setChatRooms(prev => [newRoom, ...prev]);
+            return newRoom;
         } catch (error) {
             console.error("Network error:", error);
         }
@@ -315,12 +303,12 @@ function App() {
             if (currentUser) {
                 try {
                     const token = await currentUser.getIdToken();
-                    const response = await fetch('http://localhost:8080/api/users/sync', {
+                    const response = await apiClient('/users/sync', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        headers: { 'Authorization': `Bearer ${token}` },
                         body: JSON.stringify({ email: currentUser.email, firebaseUid: currentUser.uid })
                     });
-                    if (!response.ok) throw new Error("Sync failed");
+
                     const appUserData = await response.json();
 
                     setAppUser(appUserData);

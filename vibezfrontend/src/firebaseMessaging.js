@@ -27,18 +27,15 @@ const sendTokenToBackend = async (token) => {
             throw new Error(`Backend returned status ${response.status}`);
         }
 
-        console.log("FCM Token sent to backend successfully.");
     } catch (error) {
         console.error("Error sending FCM token to backend: ", error);
     }
 };
 
 export const setupNotifications = async () => {
-    console.log("Requesting notification permission...");
     const permission = await Notification.requestPermission();
 
     if (permission === 'granted') {
-        console.log('Notification permission granted.');
 
         try {
             const currentToken = await getToken(messaging, {
@@ -46,15 +43,10 @@ export const setupNotifications = async () => {
             });
 
             if (currentToken) {
-                console.log('FCM Token:', currentToken);
                 await sendTokenToBackend(currentToken);
             } else {
-                console.log('No registration token available. Request permission.');
             }
         } catch (err) {
-            console.log('An error occurred while retrieving token. ', err);
         }
-    } else {
-        console.log('Unable to get permission to notify.');
     }
 };
