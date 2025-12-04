@@ -182,5 +182,8 @@
   "generating": "Generowanie...",
   "autoFillWithAI": "Wypełnij za pomocą AI",
   "aiGenerationMissingFields": "Uzupełnij tytuł utworu i autora, aby użyć AI.",
-  "aiGenerationError": "Błąd generowania AI. Spróbuj ponownie."
+  "aiGenerationError": "Błąd generowania AI. Spróbuj ponownie.",
+  "preferences": "Preferencje",
+  "language": "Język",
+  "chooseAppLanguage": "Wybierz preferowany język"
 }

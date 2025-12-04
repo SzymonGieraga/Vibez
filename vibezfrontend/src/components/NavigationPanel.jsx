@@ -171,7 +171,7 @@ export default function NavigationPanel({
                                     </ul>
                                 </div>
                             )}
-                            <NavItem icon={<SettingsIcon />} label={t('settings')} to="#" />
+                            <NavItem icon={<SettingsIcon />} label={t('settings')} to="/settings" />
                         </ul>
                     </div>
                 </div>
