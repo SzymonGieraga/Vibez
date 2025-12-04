@@ -178,5 +178,9 @@
   "generating": "Generating...",
   "autoFillWithAI": "Auto-fill with AI",
   "aiGenerationMissingFields": "Fill in Song Title and Author to use AI.",
-  "aiGenerationError": "AI Generation failed. Please try again."
+  "aiGenerationError": "AI Generation failed. Please try again.",
+  "preferences": "Preferences",
+  "language": "Language",
+  "chooseAppLanguage": "Choose preferred language"
+
 }

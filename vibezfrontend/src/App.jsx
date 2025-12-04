@@ -10,6 +10,7 @@ import i18n from './i18n';
 import AuthPage from './pages/AuthPage';
 import MainPage from './pages/MainPage';
 import ProfilePage from './pages/ProfilePage';
+import SettingsPage from './pages/SettingsPage';
 import ChatModal from './components/ChatModal';
 import ToastNotification from './components/ToastNotification';
 import { auth } from './firebaseConfig';
@@ -372,6 +373,20 @@ function App() {
                         setIsChatModalOpen={setIsChatModalOpen}
                         openChat={openChatWithRoom}
                         createOrGetPrivateChat={createOrGetPrivateChat}
+                    /> : <Navigate to="/auth" />}
+                />
+                <Route
+                    path="/settings"
+                    element={user && appUser ? <SettingsPage
+                        auth={auth}
+                        user={user}
+                        appUser={appUser}
+                        unreadCount={unreadCount}
+                        notifications={notifications}
+                        handleMarkAllAsRead={handleMarkAllAsRead}
+                        handleMarkOneAsRead={handleMarkToastAsRead}
+                        totalUnreadChats={totalUnreadChats}
+                        setIsChatModalOpen={setIsChatModalOpen}
                     /> : <Navigate to="/auth" />}
                 />
                 <Route

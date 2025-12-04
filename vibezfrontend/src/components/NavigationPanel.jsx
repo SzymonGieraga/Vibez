@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { signOut } from 'firebase/auth';
 import { Link, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -89,96 +88,89 @@ export default function NavigationPanel({
     return (
         <>
             <style>{scrollbarStyles}</style>
-            <nav className={`absolute top-0 left-0 h-full w-72 bg-black/80 backdrop-blur-md border-r border-gray-800 p-6 flex flex-col justify-between transition-transform duration-300 z-40 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <div>
-                    <h1 className="text-2xl font-bold mb-10">Vibez</h1>
+            <nav className={`absolute top-0 left-0 h-full w-72 bg-black/80 backdrop-blur-md border-r border-gray-800 p-6 flex flex-col transition-transform duration-300 z-40 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <h1 className="text-2xl font-bold mb-10">Vibez</h1>
 
-                    {isMainPage ? (
-                        <div className="mb-6">
-                            <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('feeds')}</p>
-                            <ul className="space-y-4">
-                                <NavButton
-                                    icon={<HomeIcon />}
-                                    label={t('forYou')}
-                                    isActive={activeFeed === 'FOR_YOU'}
-                                    onClick={() => setActiveFeed('FOR_YOU')}
-                                />
-                                <NavButton
-                                    icon={<UsersIcon />}
-                                    label={t('followingFeed')}
-                                    isActive={activeFeed === 'FOLLOWING'}
-                                    onClick={() => setActiveFeed('FOLLOWING')}
-                                />
-                                <NavButton
-                                    icon={<PopularIcon />}
-                                    label={t('popular')}
-                                    isActive={activeFeed === 'POPULAR'}
-                                    onClick={() => setActiveFeed('POPULAR')}
-                                />
-                            </ul>
-                        </div>
-                    ) : (
-                        <div className="mb-6">
-                            <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('navigation')}</p>
-                            <ul className="space-y-4">
-                                <NavItem icon={<HomeIcon />} label={t('mainPage')} to="/" />
-                            </ul>
-                        </div>
-                    )}
-
-                    <div className="border-t border-gray-800 pt-6">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('menu')}</p>
+                {isMainPage ? (
+                    <div className="mb-6">
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('feeds')}</p>
                         <ul className="space-y-4">
-                            <NavItem icon={<ProfileIcon />} label={t('profile')} to={`/profile/${username}`} />
                             <NavButton
-                                icon={<ChatIcon />}
-                                label={t('messages')}
-                                badge={totalUnreadChats > 0}
-                                onClick={() => setIsChatModalOpen(true)}
+                                icon={<HomeIcon />}
+                                label={t('forYou')}
+                                isActive={activeFeed === 'FOR_YOU'}
+                                onClick={() => setActiveFeed('FOR_YOU')}
                             />
                             <NavButton
-                                icon={<NotificationIcon />}
-                                label={t('notifications')}
-                                badge={unreadCount > 0}
-                                onClick={() => setIsListOpen(!isListOpen)}
+                                icon={<UsersIcon />}
+                                label={t('followingFeed')}
+                                isActive={activeFeed === 'FOLLOWING'}
+                                onClick={() => setActiveFeed('FOLLOWING')}
                             />
-
-                            {isListOpen && (
-                                <div className="ml-4 mt-2 p-3 bg-gray-900 rounded-lg shadow-lg space-y-2">
-                                    {unreadCount > 0 && (
-                                        <button
-                                            onClick={handleMarkAllAsRead}
-                                            className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 p-2 -ml-2 mb-1"
-                                        >
-                                            <CheckAllIcon />
-                                            <span>{t('markAllRead')}</span>
-                                        </button>
-                                    )}
-
-                                    <ul className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                                        {notifications && notifications.length > 0 ? (
-                                            notifications.slice(0, 10).map(notif => (
-                                                <li key={notif.id}>
-                                                    <NotificationItem
-                                                        notification={notif}
-                                                        onNotificationClick={handleMarkOneAsRead}
-                                                    />
-                                                </li>
-                                            ))
-                                        ) : (
-                                            <p className="text-gray-500 text-sm p-2">{t('noNotifications')}</p>
-                                        )}
-                                    </ul>
-                                </div>
-                            )}
-                            <NavItem icon={<SettingsIcon />} label={t('settings')} to="#" />
+                            <NavButton
+                                icon={<PopularIcon />}
+                                label={t('popular')}
+                                isActive={activeFeed === 'POPULAR'}
+                                onClick={() => setActiveFeed('POPULAR')}
+                            />
                         </ul>
                     </div>
-                </div>
-                <div>
-                    <p className="text-xs text-gray-500">{t('loggedInAs')}</p>
-                    <p className="text-sm font-bold truncate">{user.email}</p>
-                    <button onClick={async () => await signOut(auth)} className="w-full mt-4 text-left text-sm text-gray-400 hover:text-white">{t('logout')}</button>
+                ) : (
+                    <div className="mb-6">
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('navigation')}</p>
+                        <ul className="space-y-4">
+                            <NavItem icon={<HomeIcon />} label={t('mainPage')} to="/" />
+                        </ul>
+                    </div>
+                )}
+
+                <div className="border-t border-gray-800 pt-6">
+                    <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('menu')}</p>
+                    <ul className="space-y-4">
+                        <NavItem icon={<ProfileIcon />} label={t('profile')} to={`/profile/${username}`} />
+                        <NavButton
+                            icon={<ChatIcon />}
+                            label={t('messages')}
+                            badge={totalUnreadChats > 0}
+                            onClick={() => setIsChatModalOpen(true)}
+                        />
+                        <NavButton
+                            icon={<NotificationIcon />}
+                            label={t('notifications')}
+                            badge={unreadCount > 0}
+                            onClick={() => setIsListOpen(!isListOpen)}
+                        />
+
+                        {isListOpen && (
+                            <div className="ml-4 mt-2 p-3 bg-gray-900 rounded-lg shadow-lg space-y-2">
+                                {unreadCount > 0 && (
+                                    <button
+                                        onClick={handleMarkAllAsRead}
+                                        className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 p-2 -ml-2 mb-1"
+                                    >
+                                        <CheckAllIcon />
+                                        <span>{t('markAllRead')}</span>
+                                    </button>
+                                )}
+
+                                <ul className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                                    {notifications && notifications.length > 0 ? (
+                                        notifications.slice(0, 10).map(notif => (
+                                            <li key={notif.id}>
+                                                <NotificationItem
+                                                    notification={notif}
+                                                    onNotificationClick={handleMarkOneAsRead}
+                                                />
+                                            </li>
+                                        ))
+                                    ) : (
+                                        <p className="text-gray-500 text-sm p-2">{t('noNotifications')}</p>
+                                    )}
+                                </ul>
+                            </div>
+                        )}
+                        <NavItem icon={<SettingsIcon />} label={t('settings')} to="/settings" />
+                    </ul>
                 </div>
             </nav>
         </>
