@@ -14,7 +14,7 @@ const sendTokenToBackend = async (token) => {
 
         const authToken = await user.getIdToken();
 
-        const response = await fetch('http://localhost:8080/api/users/me/register-device-token', {
+        const response = await fetch('https://localhost:8443/api/users/me/register-device-token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain',

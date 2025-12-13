@@ -33,7 +33,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*");
-        // .withSockJS();  <-- USUNIĘTO: Frontend używa teraz czystego WebSocket
     }
 
     @Override

@@ -38,7 +38,6 @@ vibezfrontend/coverage/
 vibezbackend/target/
 vibezbackend/build/
 
-
 vibezbackend/**/*.class
 
 *.jar
@@ -72,3 +71,5 @@ vibezbackend/src/main/resources/application.properties
 /vibezfrontend/public/firebase-messaging-sw.js
 /vibezfrontend/.env
 /vibezfrontend/.env.production
+/vibezbackend/src/main/resources/keystore.p12
+/vibezbackend/src/main/resources/application-secret.properties

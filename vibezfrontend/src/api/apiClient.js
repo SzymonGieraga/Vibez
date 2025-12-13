@@ -1,14 +1,25 @@
 import { Client } from '@stomp/stompjs';
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Teraz to jest string "/api"
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://localhost:8443/api';
 
 const getWebSocketUrl = (endpoint) => {
+    // 1. Jeśli używamy Proxy (BASE_URL zaczyna się od "/"), musimy użyć adresu przeglądarki
+    if (BASE_URL.startsWith('/')) {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        // Zwracamy np. ws://localhost:5173/ws
+        // Vite Proxy przechwyci to i wyśle do https://localhost:8443/ws
+        return `${protocol}//${window.location.host}${endpoint}`;
+    }
+
+    // 2. Jeśli BASE_URL to pełny adres (np. produkcja bez proxy), stara logika działa
     const url = new URL(endpoint, BASE_URL);
-    url.protocol = url.protocol.replace('http', 'ws');
+    url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     return url.href.replace('/api', '');
 };
 
 export const apiClient = async (endpoint, options = {}) => {
+    // ... tutaj bez zmian, fetch świetnie radzi sobie ze ścieżkami względnymi
     const isFormData = options.body instanceof FormData;
     const defaultHeaders = isFormData ? {} : {
         'Content-Type': 'application/json',
@@ -22,6 +33,7 @@ export const apiClient = async (endpoint, options = {}) => {
         },
     };
 
+    // Fetch "/api/users/sync" -> Vite Proxy -> Backend
     const response = await fetch(`${BASE_URL}${endpoint}`, config);
 
     if (!response.ok) {
@@ -31,9 +43,10 @@ export const apiClient = async (endpoint, options = {}) => {
     return response;
 };
 
+// ... reszta pliku bez zmian (initWebSocket)
 export const initWebSocket = (token, onConnectCallback) => {
     const client = new Client({
-        webSocketFactory: () => new WebSocket(getWebSocketUrl('/ws')),
+        webSocketFactory: () => new WebSocket(getWebSocketUrl('/ws')), // Tu podajemy endpoint '/ws'
         connectHeaders: {
             Authorization: `Bearer ${token}`,
         },

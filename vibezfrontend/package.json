@@ -1,5 +1,5 @@
 {
-  "name": "vibezfrontend",
+  "name": "vibez",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -32,6 +32,6 @@
     "globals": "^16.4.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.17",
-    "vite": "^7.1.7"
+    "vite": "7.1.11"
   }
 }
