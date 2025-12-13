@@ -1,6 +1,7 @@
 import { getMessaging, getToken } from "firebase/messaging";
 import { getAuth } from "firebase/auth";
 import app from './firebaseConfig';
+import { apiClient } from './api/apiClient';
 
 const VAPID_KEY = "BBfSgKzI_HVZ25YqVCqwLLp5D8XpXeVZi8G3yQSol_NHfeLKzy-Cm1q3uiZJdPxhK--POw-QgZsOjZbYvD40GUc";
 
@@ -14,18 +15,15 @@ const sendTokenToBackend = async (token) => {
 
         const authToken = await user.getIdToken();
 
-        const response = await fetch('https://localhost:8443/api/users/me/register-device-token', {
+        await apiClient('/users/me/register-device-token', {
             method: 'POST',
             headers: {
-                'Content-Type': 'text/plain',
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${authToken}`,
+                'Content-Type': 'text/plain'
             },
             body: token
         });
-
-        if (!response.ok) {
-            throw new Error(`Backend returned status ${response.status}`);
-        }
+        console.log("Token FCM został pomyślnie wysłany do backendu.");
 
     } catch (error) {
         console.error("Error sending FCM token to backend: ", error);
@@ -33,10 +31,14 @@ const sendTokenToBackend = async (token) => {
 };
 
 export const setupNotifications = async () => {
+    if (!('Notification' in window)) {
+        console.log("This browser does not support desktop notification");
+        return;
+    }
+
     const permission = await Notification.requestPermission();
 
     if (permission === 'granted') {
-
         try {
             const currentToken = await getToken(messaging, {
                 vapidKey: VAPID_KEY
@@ -45,8 +47,10 @@ export const setupNotifications = async () => {
             if (currentToken) {
                 await sendTokenToBackend(currentToken);
             } else {
+                console.log('No registration token available. Request permission to generate one.');
             }
         } catch (err) {
+            console.log('An error occurred while retrieving token. ', err);
         }
     }
 };
