@@ -42,6 +42,9 @@ public class Comment {
     @JsonIgnoreProperties({"comments", "reels", "likedReels", "likedComments", "bio", "email"})
     private User user;
 
+    @Column(nullable = false)
+    private boolean isBanned = false;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reel_id", nullable = false)
     @JsonBackReference
@@ -72,6 +75,8 @@ public class Comment {
     public void setPinned(boolean pinned) {isPinned = pinned;}
     public User getUser() {return user;}
     public void setUser(User user) {this.user = user;}
+    public void setBanned(boolean banned) {isBanned = banned;}
+    public boolean isBanned() {return isBanned;}
     public Reel getReel() {return reel;}
     public void setReel(Reel reel) {this.reel = reel;}
     public Comment getParentComment() {return parentComment;}

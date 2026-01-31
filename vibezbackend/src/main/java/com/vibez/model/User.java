@@ -24,6 +24,9 @@ public class User implements UserDetails {
     @Column(unique = true, nullable = false)
     private String email;
 
+    @Column(nullable = false)
+    private String role = "ROLE_USER";
+
     private String bio;
     private String profilePictureUrl;
 
@@ -71,6 +74,8 @@ public class User implements UserDetails {
     public String getEmail() {return email;}
     public void setEmail(String email) {this.email = email;}
     public String getBio() {return bio;}
+    public void setRole(String role) {this.role = role;}
+    public String getRole() {return role;}
     public void setBio(String bio) {this.bio = bio;}
     public String getProfilePictureUrl() {return profilePictureUrl;}
     public void setProfilePictureUrl(String profilePictureUrl) {this.profilePictureUrl = profilePictureUrl;}
@@ -94,7 +99,7 @@ public class User implements UserDetails {
     @Override
     @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER"));
+        return Collections.singletonList(new SimpleGrantedAuthority(role));
     }
 
     @Override

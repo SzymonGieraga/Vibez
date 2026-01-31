@@ -34,6 +34,9 @@ public class Reel {
     private String songTitle;
     private String genre;
 
+    @Column(nullable = false)
+    private boolean isBanned = false;
+
     @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
     private List<Comment> comments = new ArrayList<>();
@@ -77,6 +80,8 @@ public class Reel {
     public String getUsername() {
         return (user != null) ? user.getUsername() : null;
     }
+    public void setBanned(boolean isBanned) { this.isBanned = isBanned; }
+    public boolean isBanned() { return isBanned; }
     public String getAuthor() { return author; }
     public void setAuthor(String author) { this.author = author; }
     public String getSongTitle() { return songTitle; }
