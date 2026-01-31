@@ -74,7 +74,6 @@ public class VideoStorageService {
 
 
     public VideoUploadResult uploadAndConvertVideo(MultipartFile file) throws IOException {
-        log.info("Starting video upload and conversion for file: {}", file.getOriginalFilename());
 
         Path tempDir = Files.createTempDirectory("video-conversion-");
         String originalFileName = file.getOriginalFilename();
@@ -83,22 +82,18 @@ public class VideoStorageService {
         try {
             Path inputPath = tempDir.resolve("input" + extension);
             file.transferTo(inputPath.toFile());
-            log.info("Saved input file to: {}", inputPath);
 
             Path outputPath = tempDir.resolve("output.mp4");
 
             if (!extension.equalsIgnoreCase(".mp4")) {
-                log.info("Converting {} to MP4", extension);
                 convertToMp4(inputPath.toFile(), outputPath.toFile());
             } else {
-                log.info("File is already MP4, copying...");
                 Files.copy(inputPath, outputPath);
             }
 
             String videoFileName = System.currentTimeMillis() + "_" +
                     originalFileName.replaceAll("\\.[^.]+$", ".mp4");
 
-            log.info("Uploading video to S3/R2 as: {}", videoFileName);
 
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
@@ -107,7 +102,7 @@ public class VideoStorageService {
                     .build();
 
             s3Client.putObject(putRequest, RequestBody.fromFile(outputPath));
-            log.info("Video uploaded successfully: {}", videoFileName);
+
 
             log.info("Generating preview frames...");
             List<String> previewFrameUrls = generatePreviewFrames(
@@ -175,7 +170,6 @@ public class VideoStorageService {
 
     private void convertToMp4(File input, File output) throws IOException {
         try {
-            log.info("Initializing FFmpeg with path: {}", ffmpegPath);
             FFmpeg ffmpeg = new FFmpeg(ffmpegPath);
             FFprobe ffprobe = new FFprobe(ffprobePath);
 
@@ -194,12 +188,9 @@ public class VideoStorageService {
                     .done();
 
             FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffprobe);
-            log.info("Starting FFmpeg conversion...");
             executor.createJob(builder).run();
-            log.info("FFmpeg conversion completed successfully");
 
         } catch (IOException e) {
-            log.error("Video conversion failed", e);
             throw new IOException("Video conversion failed: " + e.getMessage(), e);
         }
     }

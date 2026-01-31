@@ -185,5 +185,6 @@
   "aiGenerationError": "Błąd generowania AI. Spróbuj ponownie.",
   "preferences": "Preferencje",
   "language": "Język",
-  "chooseAppLanguage": "Wybierz preferowany język"
+  "chooseAppLanguage": "Wybierz preferowany język",
+  "close": "Zamknij"
 }

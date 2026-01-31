@@ -16,16 +16,11 @@ export default function EditPlaylistModal({ playlist, user, onClose, onUpdate, o
         setError('');
         try {
             const params = new URLSearchParams({
-                username: user.username,
-                name: name,
-                description: description,
-                isPublic: isPublic
+                username: user.username, name: name, description: description, isPublic: isPublic
             });
-
             const res = await apiClient(`/playlists/${playlist.id}?${params.toString()}`, {
                 method: 'PUT'
             });
-
             const updatedPlaylist = await res.json();
             onUpdate(updatedPlaylist);
         } catch (err) {

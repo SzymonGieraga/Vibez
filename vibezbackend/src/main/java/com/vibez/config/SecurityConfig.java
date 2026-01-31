@@ -34,7 +34,7 @@ public class SecurityConfig {
                 .addFilterBefore(firebaseTokenFilter, UsernamePasswordAuthenticationFilter.class)
 
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/ws/**").permitAll()
+                        .requestMatchers("/ws/**", "/ws-raw/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/users/me/register-device-token").authenticated()
                         .requestMatchers("/api/notifications/**").authenticated()

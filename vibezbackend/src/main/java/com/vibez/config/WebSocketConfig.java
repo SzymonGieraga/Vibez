@@ -47,7 +47,6 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         DefaultContentTypeResolver resolver = new DefaultContentTypeResolver();
         resolver.setDefaultMimeType(MimeTypeUtils.APPLICATION_JSON);
         converter.setContentTypeResolver(resolver);
-
         ObjectMapper objectMapper = converter.getObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         messageConverters.add(converter);

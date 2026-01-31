@@ -15,24 +15,26 @@ const getWebSocketUrl = (endpoint) => {
 
 export const apiClient = async (endpoint, options = {}) => {
     const isFormData = options.body instanceof FormData;
-    const defaultHeaders = isFormData ? {} : {
-        'Content-Type': 'application/json',
-    };
+    const defaultHeaders = isFormData ? {} : {'Content-Type': 'application/json',};
 
-    const config = {
-        ...options,
-        headers: {
-            ...defaultHeaders,
-            ...options.headers,
-        },
-    };
-
-    const response = await fetch(`${BASE_URL}${endpoint}`, config);
-
-    if (!response.ok) {
-        throw new Error(`API Error: ${response.statusText}`);
+    let url;
+    if (endpoint.startsWith('http')) {
+        url = endpoint;
+    } else {
+        url = `${BASE_URL}${endpoint}`;
     }
 
+    const config = {...options,
+        headers: {...defaultHeaders, ...options.headers,},
+    };
+
+    const response = await fetch(url, config);
+
+    if (!response.ok) {
+        const errorBody = await response.json().catch(() => ({}));
+        const errorMessage = errorBody.error?.message || errorBody.message || response.statusText;
+        throw new Error(errorMessage);
+    }
     return response;
 };
 

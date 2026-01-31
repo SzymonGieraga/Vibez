@@ -1,10 +1,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { onAuthStateChanged } from 'firebase/auth';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { setupNotifications } from './firebaseMessaging';
 import { apiClient, initWebSocket } from './api/apiClient.js';
 
-import { Stomp } from '@stomp/stompjs';
 
 import i18n from './i18n';
 import AuthPage from './pages/AuthPage';
@@ -314,7 +312,6 @@ function App() {
 
                     setAppUser(appUserData);
                     setUser(currentUser);
-                    await setupNotifications();
                     await fetchNotifications(token);
                     await fetchChatRooms(token);
                     connectWebSocket(token);
@@ -355,7 +352,9 @@ function App() {
                 onClose={handleToastClose}
             />
             <Routes>
+
                 <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
+
                 <Route
                     path="/profile/:username"
                     element={user && appUser ? <ProfilePage
@@ -391,7 +390,7 @@ function App() {
                 />
                 <Route
                     path="/"
-                    element={user && appUser ? <MainPage
+                    element={<MainPage
                         auth={auth}
                         user={user}
                         appUser={appUser}
@@ -401,8 +400,9 @@ function App() {
                         handleMarkOneAsRead={handleMarkToastAsRead}
                         totalUnreadChats={totalUnreadChats}
                         setIsChatModalOpen={setIsChatModalOpen}
-                    /> : <Navigate to="/auth" />}
+                    />}
                 />
+
                 <Route path="*" element={<Navigate to="/" />} />
             </Routes>
 

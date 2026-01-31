@@ -443,7 +443,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4" onClick={onClose}>
+        <div className="fixed inset-0  flex items-center justify-center z-50 p-4" onClick={onClose}>
             <style>{`
                 @keyframes pulse-glow {
                     0%, 100% {
@@ -499,8 +499,8 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                 }
             `}</style>
 
-            <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-                <div className="flex justify-between items-center mb-6">
+            <div className="bg-black/15 backdrop-blur-lg border-gray-700 p-6 rounded-lg  w-full max-w-3xl max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+                <div className="flex justify-between border-black items-center mb-6">
                     <h2 className="text-xl font-bold">{t('addNewReel')}</h2>
                     <button
                         type="button"
@@ -585,7 +585,7 @@ export default function AddReelModal({ user, onClose, onReelAdded }) {
                         required
                     />
 
-                    <div className="space-y-3 bg-gray-800 p-4 rounded-lg">
+                    <div className="space-y-3  p-4 rounded-lg">
                         <label className="block text-sm font-medium text-gray-300">{t('thumbnailOptions')}</label>
 
                         <div className="flex gap-4">

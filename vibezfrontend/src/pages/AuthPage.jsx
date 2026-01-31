@@ -80,7 +80,6 @@ function LoginPage({ auth }) {
 
     const handleLogin = async (e) => {
         e.preventDefault();
-        setError('');
         try {
             await signInWithEmailAndPassword(auth, email, password);
         } catch (err) {

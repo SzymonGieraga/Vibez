@@ -127,7 +127,7 @@ export default function AddToPlaylistModal({ onClose, appUser, reelToAdd }) {
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
+        <div className="fixed inset-0  bg-opacity-70 flex items-center justify-center z-50" onClick={onClose}>
             <div className="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-2xl w-full max-w-md max-h-[80vh] flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="mb-4">
                     <h2 className="text-xl font-bold">{t('addToPlaylist')}</h2>

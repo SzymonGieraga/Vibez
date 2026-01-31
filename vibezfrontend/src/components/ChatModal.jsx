@@ -17,6 +17,7 @@ const KebabIcon = () => (<svg className="w-5 h-5" fill="currentColor" viewBox="0
 const XIcon = () => (<svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>);
 const UsersIcon = () => (<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" /></svg>);
 const PlusIcon = () => (<svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>);
+const BackIcon = () => (<svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>);
 
 const AvatarPlaceholder = ({ username, className = "w-10 h-10" }) => {
     const initials = username?.substring(0, 2).toUpperCase() || '??';
@@ -187,28 +188,33 @@ export default function ChatModal({
 
     return (
         <div
-            className="fixed inset-0 bg-black/50 backdrop-blur-md z-40 flex items-center justify-center"
+            className="fixed inset-0 bg-black/15 z-40 flex items-center justify-center"
             onClick={onClose}
         >
             <style>{scrollbarStyles}</style>
 
             <div
-                className="bg-black/50 backdrop-blur-lg w-full max-w-5xl h-[80vh] rounded-lg shadow-xl flex overflow-hidden border border-gray-700 text-white"
+                className="bg-black/15 backdrop-blur-lg w-full max-w-5xl h-[100dvh] md:h-[80vh] rounded-none md:rounded-lg shadow-xl flex overflow-hidden border-0 md:border border-gray-700 text-white"
                 onClick={(e) => e.stopPropagation()}
             >
-                <aside className="w-1/3 min-w-[300px] border-r border-gray-700 flex flex-col bg-gray-900/50 relative">
+                <aside className={`flex-col bg-black/5 relative w-full md:w-1/3 md:min-w-[300px] border-r border-gray-700 ${activeRoomId ? 'hidden md:flex' : 'flex'}`}>
                     <header className="p-4 border-b border-gray-700 flex justify-between items-center">
                         <h2 className="text-xl font-semibold">{appUser.username}</h2>
-                        <button
-                            onClick={() => {
-                                setIsSearchMode(!isSearchMode);
-                                if (!isSearchMode) setTimeout(() => document.getElementById('search-input')?.focus(), 100);
-                            }}
-                            className={`p-1 rounded transition-colors ${isSearchMode ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
-                            title={t('newMessage')}
-                        >
-                            <NewChatIcon />
-                        </button>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                onClick={() => {
+                                    setIsSearchMode(!isSearchMode);
+                                    if (!isSearchMode) setTimeout(() => document.getElementById('search-input')?.focus(), 100);
+                                }}
+                                className={`p-1 rounded transition-colors ${isSearchMode ? 'text-blue-400' : 'text-gray-400 hover:text-white'}`}
+                                title={t('newMessage')}
+                            >
+                                <NewChatIcon />
+                            </button>
+                            <button onClick={onClose} className="md:hidden text-gray-400 hover:text-white">
+                                <CloseIcon />
+                            </button>
+                        </div>
                     </header>
 
                     {isSearchMode && (
@@ -335,11 +341,18 @@ export default function ChatModal({
                     </div>
                 </aside>
 
-                <section className="w-2/3 flex flex-col">
+                <section className={`flex-col w-full md:w-2/3 ${activeRoomId ? 'flex' : 'hidden md:flex'}`}>
                     {activeRoom ? (
                         <>
                             <header className="p-4 border-b border-gray-700 flex justify-between items-center">
                                 <div className="flex items-center gap-3">
+                                    <button
+                                        className="md:hidden text-gray-400 hover:text-white -ml-2"
+                                        onClick={() => setActiveRoomId(null)}
+                                    >
+                                        <BackIcon />
+                                    </button>
+
                                     {activeRoom.type === 'PRIVATE' ? (
                                         getPrivateChatPartner(activeRoom)?.profilePictureUrl ? (
                                             <img src={getPrivateChatPartner(activeRoom).profilePictureUrl} className="w-8 h-8 rounded-full" />
@@ -351,16 +364,19 @@ export default function ChatModal({
                                             <UsersIcon />
                                         </div>
                                     )}
-                                    <h2 className="text-xl font-semibold">
+                                    <h2 className="text-xl font-semibold truncate max-w-[150px] sm:max-w-xs">
                                         {activeRoom.type === 'GROUP' ? activeRoom.name : getPrivateChatPartner(activeRoom)?.username}
                                     </h2>
                                 </div>
-                                <button onClick={onClose} className="text-gray-400 hover:text-white">
+                                <button onClick={onClose} className="text-gray-400 hover:text-white hidden md:block">
+                                    <CloseIcon />
+                                </button>
+                                <button onClick={onClose} className="text-gray-400 hover:text-white md:hidden">
                                     <CloseIcon />
                                 </button>
                             </header>
 
-                            <div className="flex-1 p-4 overflow-y-auto space-y-2 custom-scrollbar">
+                            <div className="flex-1 p-4 overflow-y-auto space-y-2 custom-scrollbar bg-black/5">
                                 {(chatMessages[activeRoomId] || []).map((msg, index) => {
                                     const currentMessages = chatMessages[activeRoomId] || [];
                                     const prevMsg = currentMessages[index - 1];
@@ -394,17 +410,17 @@ export default function ChatModal({
                                 <div ref={messagesEndRef} />
                             </div>
 
-                            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700">
+                            <form onSubmit={handleSendMessage} className="p-4 border-t border-gray-700 bg-black/10">
                                 <div className="flex items-center space-x-2">
                                     <input
                                         type="text"
                                         value={messageContent}
                                         onChange={(e) => setMessageContent(e.target.value)}
                                         placeholder={t('writeMessage')}
-                                        className="flex-1 p-3 bg-gray-800 border border-gray-700 rounded-full outline-none text-white"
+                                        className="flex-1 p-3 bg-gray-800 border border-gray-700 rounded-full outline-none text-white text-sm"
                                         maxLength={500}
                                     />
-                                    <button type="submit" className="p-3 bg-blue-600 rounded-full text-white hover:bg-blue-700">
+                                    <button type="submit" className="p-3 bg-blue-600 rounded-full text-white hover:bg-blue-700 flex-shrink-0">
                                         <SendIcon />
                                     </button>
                                 </div>
@@ -414,7 +430,7 @@ export default function ChatModal({
                         <div className="flex-1 flex flex-col items-center justify-center text-gray-400">
                             <h2 className="text-xl">{t('selectChat')}</h2>
                             <p>{t('startNewConversation')}</p>
-                            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white">
+                            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white hidden md:block">
                                 <CloseIcon />
                             </button>
                         </div>
@@ -455,15 +471,15 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
         <div className={`flex items-end space-x-2 ${isMe ? 'justify-end' : 'justify-start'} group relative`}>
 
             {!isMe && (
-                <div className="flex-shrink-0 w-10">
+                <div className="flex-shrink-0 w-8 md:w-10">
                     {showAvatar ? (
                         sender.profilePictureUrl ? (
-                            <img src={sender.profilePictureUrl} alt={sender.username} className="w-10 h-10 rounded-full" />
+                            <img src={sender.profilePictureUrl} alt={sender.username} className="w-8 h-8 md:w-10 md:h-10 rounded-full" />
                         ) : (
-                            <AvatarPlaceholder username={sender.username} className="w-10 h-10" />
+                            <AvatarPlaceholder username={sender.username} className="w-8 h-8 md:w-10 md:h-10" />
                         )
                     ) : (
-                        <div className="w-10 h-10" />
+                        <div className="w-8 h-8 md:w-10 md:h-10" />
                     )}
                 </div>
             )}
@@ -472,7 +488,7 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
                 <div className="relative self-center mb-3">
                     <button
                         onClick={() => setIsMenuOpen(!isMenuOpen)}
-                        className="text-gray-500 hover:text-white p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-gray-500 hover:text-white p-1 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                         <KebabIcon />
                     </button>
@@ -498,21 +514,21 @@ function MessageBubble({ message, isMe, onEdit, onDelete, showAvatar, showNickna
                 </div>
             )}
 
-            <div className="flex flex-col max-w-xs lg:max-w-md">
+            <div className="flex flex-col max-w-[75%] lg:max-w-md">
                 {!isMe && showNickname && (
                     <span className="text-[10px] text-gray-400 ml-1 mb-1 font-bold">{sender.username}</span>
                 )}
 
-                <div className={`p-3 rounded-2xl w-full ${isMe ? 'bg-gray-800 rounded-br-lg text-white' : 'bg-gray-700 rounded-bl-lg text-white'} ${isDeleted ? 'bg-gray-600/50 italic text-gray-400' : ''}`}>
+                <div className={`p-3 rounded-2xl w-full text-sm md:text-base ${isMe ? 'bg-gray-800 rounded-br-lg text-white' : 'bg-gray-700 rounded-bl-lg text-white'} ${isDeleted ? 'bg-gray-600/50 italic text-gray-400' : ''}`}>
 
                     {message.reel && !isDeleted && (
-                        <div className="mb-2 w-48 sm:w-56 overflow-hidden rounded-lg border border-gray-600/30">
+                        <div className="mb-2 w-full overflow-hidden rounded-lg border border-gray-600/30">
                             <ReelPreview reel={message.reel} />
                         </div>
                     )}
 
                     {isEditing ? (
-                        <div className="flex flex-col space-y-2 min-w-[200px]">
+                        <div className="flex flex-col space-y-2 min-w-[150px]">
                             <textarea
                                 value={editContent}
                                 onChange={(e) => setEditContent(e.target.value)}

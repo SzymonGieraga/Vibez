@@ -114,11 +114,18 @@ export default function VideoPlayer({
     };
 
     const handleTouchStart = (e) => setTouchStart(e.touches[0].clientY);
+
     const handleTouchEnd = (e) => {
         const touchEnd = e.changedTouches[0].clientY;
         const deltaY = touchStart - touchEnd;
-        if (deltaY > 50) setIsDetailsVisible(true);
-        else if (deltaY < -50) setIsDetailsVisible(false);
+
+        if (Math.abs(deltaY) > 50) {
+            if (deltaY > 0) {
+                goToNextVideo();
+            } else {
+                goToPrevVideo();
+            }
+        }
     };
 
     return (
@@ -133,10 +140,10 @@ export default function VideoPlayer({
                 loop={isCommentsOpen}
             />
 
-            <button onClick={(e) => { e.stopPropagation(); goToPrevVideo(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+            <button onClick={(e) => { e.stopPropagation(); goToPrevVideo(); }} className="absolute left-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto hidden md:block">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             </button>
-            <button onClick={(e) => { e.stopPropagation(); goToNextVideo(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+            <button onClick={(e) => { e.stopPropagation(); goToNextVideo(); }} className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/30 hover:bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto hidden md:block">
                 <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
             </button>
 
@@ -144,10 +151,10 @@ export default function VideoPlayer({
                 <div></div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">{!isPlaying && <PlayIcon />}</div>
                 <div className="text-white pointer-events-auto" onClick={(e) => e.stopPropagation()}>
-                    <div className="cursor-pointer" onClick={() => setIsDetailsVisible(true)}>
+                    <div className="cursor-pointer mb-8 md:mb-0" onClick={() => setIsDetailsVisible(true)}>
                         <p className="font-bold text-sm">@{currentVideo.username}</p>
                         <p className="text-xs text-gray-300">{currentVideo.songTitle} {t('by')} {currentVideo.author}</p>
-                        <p className="text-xs text-gray-400 mt-1 truncate">{currentVideo.description}</p>
+                        <p className="text-xs text-gray-400 mt-1 truncate max-w-[80%]">{currentVideo.description}</p>
                     </div>
                     <div className="absolute right-4 bottom-24 flex flex-col items-center gap-4 z-10">
                         <InteractionButton
@@ -213,7 +220,7 @@ const InteractionButton = ({ icon, count, onClick, disabled = false }) => (
 const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => {
     const { t } = useTranslation();
     return (
-        <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
+        <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out z-20 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>
             <div className="text-left text-sm space-y-2">
                 <div className="flex items-center gap-2 mb-2">

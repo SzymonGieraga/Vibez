@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next'; // Import i18n
+import { useTranslation } from 'react-i18next';
 import NavigationPanel from '../components/NavigationPanel.jsx';
 import ReelPreview from '../components/ReelPreview.jsx';
 import PlaylistCard from '../components/PlaylistCard.jsx';

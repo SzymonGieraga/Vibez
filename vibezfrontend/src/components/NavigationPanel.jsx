@@ -14,12 +14,13 @@ const UsersIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentCo
 
 const NavItem = ({ icon, label, to = "#", badge = false }) => (
     <li>
-        <Link to={to} className="flex items-center justify-between text-gray-400 hover:text-white">
-            <div className="flex items-center space-x-3">
+        <Link to={to} className="flex items-center justify-center md:justify-between text-gray-400 hover:text-white group py-2 md:py-0">
+            <div className="flex items-center md:space-x-3 relative">
                 {icon}
-                <span className="font-semibold">{label}</span>
+                <span className="font-semibold hidden md:block">{label}</span>
+                {badge && <div className="absolute top-0 right-0 md:static w-2.5 h-2.5 bg-red-500 rounded-full md:ml-auto"></div>}
             </div>
-            {badge && <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>}
+            {badge && <div className="hidden md:block w-2.5 h-2.5 bg-red-500 rounded-full"></div>}
         </Link>
     </li>
 );
@@ -28,13 +29,14 @@ const NavButton = ({ icon, label, badge = false, onClick, isActive = false }) =>
     <li>
         <button
             onClick={onClick}
-            className={`flex items-center justify-between w-full transition-colors ${isActive ? 'text-white font-bold' : 'text-gray-400 hover:text-white'}`}
+            className={`flex items-center justify-center md:justify-between w-full transition-colors py-2 md:py-0 ${isActive ? 'text-white font-bold' : 'text-gray-400 hover:text-white'}`}
         >
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center md:space-x-3 relative">
                 {icon}
-                <span className={isActive ? "font-bold" : "font-semibold"}>{label}</span>
+                <span className={`hidden md:block ${isActive ? "font-bold" : "font-semibold"}`}>{label}</span>
+                {badge && <div className="absolute -top-1 -right-1 md:hidden w-2.5 h-2.5 bg-red-500 rounded-full"></div>}
             </div>
-            {badge && <div className="w-2.5 h-2.5 bg-red-500 rounded-full"></div>}
+            {badge && <div className="hidden md:block w-2.5 h-2.5 bg-red-500 rounded-full"></div>}
         </button>
     </li>
 );
@@ -88,12 +90,18 @@ export default function NavigationPanel({
     return (
         <>
             <style>{scrollbarStyles}</style>
-            <nav className={`absolute top-0 left-0 h-full w-72 bg-black/80 backdrop-blur-md border-r border-gray-800 p-6 flex flex-col transition-transform duration-300 z-40 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-                <h1 className="text-2xl font-bold mb-10">Vibez</h1>
+            <nav className={`absolute top-0 left-0 h-full bg-black/80 backdrop-blur-md border-r border-gray-800 p-2 md:p-6 flex flex-col transition-all duration-300 z-40 
+                ${isOpen ? 'translate-x-0' : '-translate-x-full'} 
+                w-20 md:w-72`}>
+
+                <h1 className="text-2xl font-bold mb-10 text-center md:text-left">
+                    <span className="hidden md:block">Vibez</span>
+                    <span className="md:hidden">V</span>
+                </h1>
 
                 {isMainPage ? (
                     <div className="mb-6">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('feeds')}</p>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider hidden md:block">{t('feeds')}</p>
                         <ul className="space-y-4">
                             <NavButton
                                 icon={<HomeIcon />}
@@ -117,7 +125,7 @@ export default function NavigationPanel({
                     </div>
                 ) : (
                     <div className="mb-6">
-                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('navigation')}</p>
+                        <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider hidden md:block">{t('navigation')}</p>
                         <ul className="space-y-4">
                             <NavItem icon={<HomeIcon />} label={t('mainPage')} to="/" />
                         </ul>
@@ -125,7 +133,7 @@ export default function NavigationPanel({
                 )}
 
                 <div className="border-t border-gray-800 pt-6">
-                    <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider">{t('menu')}</p>
+                    <p className="text-xs text-gray-500 uppercase font-bold mb-4 tracking-wider hidden md:block">{t('menu')}</p>
                     <ul className="space-y-4">
                         <NavItem icon={<ProfileIcon />} label={t('profile')} to={`/profile/${username}`} />
                         <NavButton
@@ -134,41 +142,43 @@ export default function NavigationPanel({
                             badge={totalUnreadChats > 0}
                             onClick={() => setIsChatModalOpen(true)}
                         />
-                        <NavButton
-                            icon={<NotificationIcon />}
-                            label={t('notifications')}
-                            badge={unreadCount > 0}
-                            onClick={() => setIsListOpen(!isListOpen)}
-                        />
+                        <div className="relative">
+                            <NavButton
+                                icon={<NotificationIcon />}
+                                label={t('notifications')}
+                                badge={unreadCount > 0}
+                                onClick={() => setIsListOpen(!isListOpen)}
+                            />
 
-                        {isListOpen && (
-                            <div className="ml-4 mt-2 p-3 bg-gray-900 rounded-lg shadow-lg space-y-2">
-                                {unreadCount > 0 && (
-                                    <button
-                                        onClick={handleMarkAllAsRead}
-                                        className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 p-2 -ml-2 mb-1"
-                                    >
-                                        <CheckAllIcon />
-                                        <span>{t('markAllRead')}</span>
-                                    </button>
-                                )}
-
-                                <ul className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar pr-1">
-                                    {notifications && notifications.length > 0 ? (
-                                        notifications.slice(0, 10).map(notif => (
-                                            <li key={notif.id}>
-                                                <NotificationItem
-                                                    notification={notif}
-                                                    onNotificationClick={handleMarkOneAsRead}
-                                                />
-                                            </li>
-                                        ))
-                                    ) : (
-                                        <p className="text-gray-500 text-sm p-2">{t('noNotifications')}</p>
+                            {isListOpen && (
+                                <div className="absolute left-14 top-0 md:static md:ml-4 md:mt-2 w-64 md:w-auto z-50 p-3 bg-gray-900 rounded-lg shadow-lg space-y-2 border border-gray-700 md:border-0">
+                                    {unreadCount > 0 && (
+                                        <button
+                                            onClick={handleMarkAllAsRead}
+                                            className="flex items-center space-x-2 text-sm text-blue-400 hover:text-blue-300 p-2 -ml-2 mb-1"
+                                        >
+                                            <CheckAllIcon />
+                                            <span>{t('markAllRead')}</span>
+                                        </button>
                                     )}
-                                </ul>
-                            </div>
-                        )}
+
+                                    <ul className="space-y-1 max-h-64 overflow-y-auto custom-scrollbar pr-1">
+                                        {notifications && notifications.length > 0 ? (
+                                            notifications.slice(0, 10).map(notif => (
+                                                <li key={notif.id}>
+                                                    <NotificationItem
+                                                        notification={notif}
+                                                        onNotificationClick={handleMarkOneAsRead}
+                                                    />
+                                                </li>
+                                            ))
+                                        ) : (
+                                            <p className="text-gray-500 text-sm p-2">{t('noNotifications')}</p>
+                                        )}
+                                    </ul>
+                                </div>
+                            )}
+                        </div>
                         <NavItem icon={<SettingsIcon />} label={t('settings')} to="/settings" />
                     </ul>
                 </div>

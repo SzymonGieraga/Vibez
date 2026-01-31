@@ -31,19 +31,14 @@ public class ReelService {
                 .orElseThrow(() -> new EntityNotFoundException("User not found: " + username));
         Reel reel = reelRepository.findById(reelId)
                 .orElseThrow(() -> new EntityNotFoundException("Reel not found: " + reelId));
-
         if (likeRepository.existsByUserAndReel(user, reel)) {
             return reel;
         }
-
         Like newLike = new Like(user, reel);
-
         try {
             likeRepository.save(newLike);
-
             reel.incrementLikeCount();
             return reelRepository.save(reel);
-
         } catch (DataIntegrityViolationException e) {
             throw new IllegalStateException("Like operation failed due to concurrent modification.", e);
         }

@@ -96,11 +96,7 @@ public class ImageStorageService {
         }
 
         BufferedImage rgbImage = new BufferedImage(
-                image.getWidth(),
-                image.getHeight(),
-                BufferedImage.TYPE_INT_RGB
-        );
-
+                image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
         rgbImage.createGraphics().drawImage(image, 0, 0,
                 java.awt.Color.WHITE, null);
 
