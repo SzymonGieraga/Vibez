@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -19,6 +20,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -72,6 +74,23 @@ public class VideoStorageService {
         return presignedRequest.url().toString();
     }
 
+    public void deleteFileFromUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.trim().isEmpty()) return;
+        try {
+            URI uri = new URI(fileUrl);
+            String path = uri.getPath();
+            if (path.startsWith("/")) {
+                path = path.substring(1);
+            }
+            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(path)
+                    .build();
+            s3Client.deleteObject(deleteRequest);
+        } catch (Exception e) {
+            log.error("Failed to delete file from storage: {}", fileUrl, e);
+        }
+    }
 
     public VideoUploadResult uploadAndConvertVideo(MultipartFile file) throws IOException {
 
@@ -94,7 +113,6 @@ public class VideoStorageService {
             String videoFileName = System.currentTimeMillis() + "_" +
                     originalFileName.replaceAll("\\.[^.]+$", ".mp4");
 
-
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
                     .key(videoFileName)
@@ -103,8 +121,6 @@ public class VideoStorageService {
 
             s3Client.putObject(putRequest, RequestBody.fromFile(outputPath));
 
-
-            log.info("Generating preview frames...");
             List<String> previewFrameUrls = generatePreviewFrames(
                     outputPath.toFile(),
                     tempDir,
@@ -117,7 +133,6 @@ public class VideoStorageService {
             cleanupTempDirectory(tempDir);
         }
     }
-
 
     private List<String> generatePreviewFrames(File videoFile, Path tempDir, String videoFileName) throws IOException {
         List<String> frameUrls = new ArrayList<>();
@@ -157,7 +172,6 @@ public class VideoStorageService {
 
                     s3Client.putObject(putRequest, RequestBody.fromFile(framePath));
                     frameUrls.add(buildPublicUrl(frameFileName));
-                    log.info("Uploaded preview frame: {}", frameFileName);
                 }
             }
 
@@ -208,7 +222,6 @@ public class VideoStorageService {
                     .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
                     .forEach(File::delete);
-            log.info("Cleaned up temp directory: {}", tempDir);
         } catch (IOException e) {
             log.error("Failed to cleanup temp directory: {}", tempDir, e);
         }

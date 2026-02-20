@@ -29,7 +29,6 @@ public class Reel {
     @JsonIgnoreProperties({"comments", "reels", "email", "bio", "likes"})
     private User user;
 
-
     private String author;
     private String songTitle;
     private String genre;
@@ -54,6 +53,14 @@ public class Reel {
     @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<Like> likes = new HashSet<>();
+
+    @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<PlaylistReel> playlistReels = new HashSet<>();
+
+    @OneToOne(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private ReelPreview preview;
 
     public Reel() {}
 
@@ -105,6 +112,10 @@ public class Reel {
     public void setViewCount(long viewCount) { this.viewCount = viewCount; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getCreatedAt() { return createdAt; }
+    public ReelPreview getPreview() { return preview; }
+    public void setPreview(ReelPreview preview) { this.preview = preview; }
+    public Set<PlaylistReel> getPlaylistReels() { return playlistReels; }
+    public void setPlaylistReels(Set<PlaylistReel> playlistReels) { this.playlistReels = playlistReels; }
 
     public void decrementLikeCount() {
         if (this.likeCount > 0) {

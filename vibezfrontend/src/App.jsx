@@ -11,6 +11,7 @@ import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 import ChatModal from './components/ChatModal';
 import ToastNotification from './components/ToastNotification';
+import AdminPage from './pages/AdminPage';
 import { auth } from './firebaseConfig';
 
 let stompClient = null;
@@ -352,6 +353,11 @@ function App() {
                 onClose={handleToastClose}
             />
             <Routes>
+
+                <Route
+                    path="/admin"
+                    element={user && appUser?.role === 'ROLE_ADMIN' ? <AdminPage user={user} /> : <Navigate to="/" />}
+                />
 
                 <Route path="/auth" element={!user ? <AuthPage auth={auth} /> : <Navigate to="/" />} />
 

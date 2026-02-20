@@ -73,3 +73,4 @@ vibezbackend/src/main/resources/application.properties
 /vibezfrontend/.env.production
 /vibezbackend/src/main/resources/keystore.p12
 /vibezbackend/src/main/resources/application-secret.properties
+/vibezbackend/src/main/java/com/vibez/config/AdminAccountInitializer.java
