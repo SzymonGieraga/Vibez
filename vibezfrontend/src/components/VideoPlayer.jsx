@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
+import ReportModal from './modals/ReportModal';
 
 const MuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" clipRule="evenodd" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l4-4m0 4l-4-4" /></svg> );
 const UnmuteIcon = () => ( <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6v12m-3.536-1.464a5 5 0 010-7.072" /></svg> );
@@ -33,6 +34,7 @@ export default function VideoPlayer({
     const [progress, setProgress] = useState(0);
     const [isDetailsVisible, setIsDetailsVisible] = useState(false);
     const [touchStart, setTouchStart] = useState(0);
+
 
     const videoRef = useRef(null);
     const progressRef = useRef(null);
@@ -201,7 +203,7 @@ export default function VideoPlayer({
                 </div>
             </div>
 
-            <ExpandedDetailsPanel video={currentVideo} isVisible={isDetailsVisible} onClose={() => setIsDetailsVisible(false)} />
+            <ExpandedDetailsPanel video={currentVideo} isVisible={isDetailsVisible} appUser={appUser} onClose={() => setIsDetailsVisible(false)} />
         </div>
     );
 };
@@ -217,8 +219,9 @@ const InteractionButton = ({ icon, count, onClick, disabled = false }) => (
     </div>
 );
 
-const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => {
+const ExpandedDetailsPanel = ({ video, isVisible, onClose, appUser }) => {
     const { t } = useTranslation();
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
     return (
         <div className={`absolute bottom-0 left-0 w-full bg-black/80 backdrop-blur-sm p-4 rounded-t-2xl transition-transform duration-300 ease-in-out z-20 ${isVisible ? 'translate-y-0' : 'translate-y-full'}`} onClick={(e) => e.stopPropagation()}>
             <div className="w-12 h-1.5 bg-gray-600 rounded-full mx-auto mb-4 cursor-pointer" onClick={onClose}></div>
@@ -226,6 +229,16 @@ const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => {
                 <div className="flex items-center gap-2 mb-2">
                     <EyeIcon />
                     <span className="text-gray-300 text-xs">{video.viewCount || 0} {t('views')}</span>
+                    <div className="mt-4 flex gap-2">
+                        {video?.username !== appUser.displayName && (
+                            <button
+                                onClick={() => setIsReportModalOpen(true)}
+                                className="px-4 py-2 bg-gray-800 text-red-500 font-bold rounded hover:bg-gray-700 text-sm"
+                            >
+                                Zgłoś rolkę
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <DetailRow label={t('song')} value={`${video.songTitle} ${t('by')} ${video.author}`} />
                 <DetailRow label={t('genre')} value={video.genre} />
@@ -242,6 +255,13 @@ const ExpandedDetailsPanel = ({ video, isVisible, onClose }) => {
                     </div>
                 )}
             </div>
+            <ReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                contentId={video.id}
+                type="REEL"
+                user={appUser}
+            />
         </div>
     );
 };

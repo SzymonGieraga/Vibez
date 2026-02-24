@@ -13,7 +13,7 @@ export default function FollowListModal({ mode, profileUsername, currentUsername
         const fetchUsers = async () => {
             setIsLoading(true);
             try {
-                const res = await fetch(`http://localhost:8080/api/follows/${profileUsername}/${mode}?currentUsername=${currentUsername}`);
+                const res = await apiClient(`/follows/${profileUsername}/${mode}?currentUsername=${currentUsername}`);
                 if (res.ok) {
                     const data = await res.json();
                     setUsers(data);

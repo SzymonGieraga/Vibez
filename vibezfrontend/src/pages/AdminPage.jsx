@@ -4,10 +4,15 @@ import { apiClient } from '../api/apiClient';
 
 export default function AdminPage({ user }) {
     const [activeTab, setActiveTab] = useState('reports');
+
     const [reports, setReports] = useState([]);
+    const [reportPage, setReportPage] = useState(0);
+    const [hasMoreReports, setHasMoreReports] = useState(true);
+
     const [reels, setReels] = useState([]);
-    const [page, setPage] = useState(0);
-    const [hasMore, setHasMore] = useState(true);
+    const [reelPage, setReelPage] = useState(0);
+    const [hasMoreReels, setHasMoreReels] = useState(true);
+
     const [loading, setLoading] = useState(true);
 
     const [editingReelId, setEditingReelId] = useState(null);
@@ -18,21 +23,28 @@ export default function AdminPage({ user }) {
 
     useEffect(() => {
         if (activeTab === 'reports') {
-            fetchReports();
+            fetchReports(0, true);
         } else if (activeTab === 'reels') {
             fetchReels(0, true);
         }
     }, [activeTab]);
 
-    const fetchReports = async () => {
+    const fetchReports = async (pageNumber, reset = false) => {
         setLoading(true);
         try {
             const token = await user.getIdToken();
-            const response = await apiClient('/admin/reports', {
+            const response = await apiClient(`/admin/reports?page=${pageNumber}&size=10`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await response.json();
-            setReports(data);
+
+            if (reset) {
+                setReports(data.content);
+            } else {
+                setReports(prev => [...prev, ...data.content]);
+            }
+            setReportPage(pageNumber);
+            setHasMoreReports(!data.last);
         } catch (error) {
             console.error(error);
         } finally {
@@ -54,12 +66,28 @@ export default function AdminPage({ user }) {
             } else {
                 setReels(prev => [...prev, ...data.content]);
             }
-            setPage(pageNumber);
-            setHasMore(!data.last);
+            setReelPage(pageNumber);
+            setHasMoreReels(!data.last);
         } catch (error) {
             console.error(error);
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleReportAction = async (reportId, action) => {
+        try {
+            const token = await user.getIdToken();
+            await apiClient(`/admin/reports/${reportId}/${action}`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            setReports(prev => prev.map(r => r.id === reportId ? {
+                ...r,
+                status: action === 'accept' ? 'RESOLVED' : 'REJECTED'
+            } : r));
+        } catch (error) {
+            console.error(error);
         }
     };
 
@@ -73,8 +101,6 @@ export default function AdminPage({ user }) {
             });
             if (type === 'REEL') {
                 setReels(prev => prev.filter(r => r.id !== id));
-            } else {
-                fetchReports();
             }
         } catch (error) {
             console.error(error);
@@ -142,24 +168,101 @@ export default function AdminPage({ user }) {
                 </button>
             </div>
 
-            {loading && page === 0 && <div>Loading...</div>}
+            {loading && ((activeTab === 'reports' && reportPage === 0) || (activeTab === 'reels' && reelPage === 0)) && <div>Loading...</div>}
 
             {activeTab === 'reports' && (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-6">
                     {reports.map(report => (
-                        <div key={report.id} className="p-4 border border-gray-700 rounded bg-gray-900">
-                            <p>Typ: {report.type}</p>
-                            <p>ID Kontentu: {report.content_id}</p>
-                            <p>Powód: {report.reason}</p>
-                            <p>Status: {report.status}</p>
-                            <button
-                                onClick={() => handleDeleteContent(report.type, report.content_id)}
-                                className="mt-2 px-4 py-2 bg-red-600 rounded hover:bg-red-700"
-                            >
-                                Usuń treść
-                            </button>
+                        <div key={report.id} className="p-4 border border-gray-700 rounded bg-gray-900 flex flex-col gap-2">
+                            <div className="flex justify-between items-center border-b border-gray-700 pb-2 mb-2">
+                                <div>
+                                    <span className="font-bold text-lg">Zgłoszenie #{report.id}</span>
+                                    <span className="ml-2 text-sm text-gray-400">Typ: {report.type} | Zgłosił: @{report.reporterUsername}</span>
+                                </div>
+                                <span className={`px-2 py-1 rounded text-xs font-bold ${report.status === 'PENDING' ? 'bg-yellow-600' : report.status === 'RESOLVED' ? 'bg-green-600' : 'bg-red-600'}`}>
+                                    {report.status}
+                                </span>
+                            </div>
+
+                            <p className="mb-2"><span className="text-gray-400">Powód:</span> {report.reason}</p>
+
+                            <div className="bg-black p-4 rounded border border-gray-800">
+                                {report.type === 'REEL' && report.reel && (
+                                    <div className="flex gap-4">
+                                        <div className="w-[15vw] h-[12vh] bg-gray-900 flex-shrink-0">
+                                            <video src={report.reel.videoUrl} controls className="w-full h-full object-contain" />
+                                        </div>
+                                        <div>
+                                            <p><strong>Autor:</strong> @{report.reel.user?.username}</p>
+                                            <p><strong>Opis:</strong> {report.reel.description}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {report.type === 'REEL' && !report.reel && (
+                                    <p className="text-gray-500 italic">Treść została już usunięta.</p>
+                                )}
+
+                                {report.type === 'COMMENT' && report.commentText && (
+                                    <div>
+                                        <p><strong>@{report.commentAuthor}:</strong> {report.commentText}</p>
+                                    </div>
+                                )}
+                                {report.type === 'COMMENT' && !report.commentText && (
+                                    <p className="text-gray-500 italic">Komentarz został już usunięty.</p>
+                                )}
+                                {report.type === 'USER' && report.reportedUser && (
+                                    <div className="flex items-center gap-4">
+                                        {report.reportedUser.profilePictureUrl ? (
+                                            <img
+                                                src={report.reportedUser.profilePictureUrl}
+                                                alt="avatar"
+                                                className="w-16 h-16 rounded-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-16 h-16 rounded-full bg-gray-800 border border-gray-600 flex items-center justify-center flex-shrink-0">
+                                                <svg className="w-8 h-8 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                                                </svg>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="font-bold">@{report.reportedUser.username}</p>
+                                            <p className="text-sm text-gray-400">{report.reportedUser.bio || 'Brak bio'}</p>
+                                        </div>
+                                    </div>
+                                )}
+                                {report.type === 'USER' && !report.reportedUser && (
+                                    <p className="text-gray-500 italic">Użytkownik nie istnieje.</p>
+                                )}
+                            </div>
+
+                            {report.status === 'PENDING' && (
+                                <div className="flex gap-2 mt-4">
+                                    <button
+                                        onClick={() => handleReportAction(report.id, 'accept')}
+                                        className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 font-bold text-sm"
+                                    >
+                                        Przyjmij (Usuń / Zbanuj)
+                                    </button>
+                                    <button
+                                        onClick={() => handleReportAction(report.id, 'reject')}
+                                        className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 font-bold text-sm"
+                                    >
+                                        Odrzuć
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ))}
+                    {hasMoreReports && (
+                        <button
+                            onClick={() => fetchReports(reportPage + 1)}
+                            className="mt-4 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 w-full"
+                            disabled={loading}
+                        >
+                            {loading ? 'Ładowanie...' : 'Pokaż więcej zgłoszeń'}
+                        </button>
+                    )}
                 </div>
             )}
 
@@ -267,9 +370,9 @@ export default function AdminPage({ user }) {
                             </div>
                         </div>
                     ))}
-                    {hasMore && (
+                    {hasMoreReels && (
                         <button
-                            onClick={() => fetchReels(page + 1)}
+                            onClick={() => fetchReels(reelPage + 1)}
                             className="mt-4 px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 w-full"
                             disabled={loading}
                         >

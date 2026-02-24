@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import NavigationPanel from '../components/NavigationPanel.jsx';
 import AddReelModal from '../components/AddReelModal.jsx';
 import VideoPlayer from '../components/VideoPlayer.jsx';
@@ -22,6 +23,9 @@ export default function MainPage({
                                      totalUnreadChats,
                                      setIsChatModalOpen
                                  }) {
+    const location = useLocation();
+    const navigate = useNavigate();
+
     const [isNavOpen, setIsNavOpen] = useState(false);
     const [isAsideOpen, setIsAsideOpen] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,7 +62,15 @@ export default function MainPage({
                 throw new Error("Network response was not ok");
             }
 
-            const data = await response.json();
+            let data = await response.json();
+
+            if (location.state?.targetReel && activeFeed === 'FOR_YOU') {
+                const target = location.state.targetReel;
+                data = data.filter(r => r.id !== target.id);
+                data.unshift(target);
+                navigate(location.pathname, { replace: true, state: {} });
+            }
+
             setVideos(data);
             if (resetIndex) {
                 setCurrentVideoIndex(0);
@@ -92,13 +104,6 @@ export default function MainPage({
             console.error("Błąd podczas pobierania polubionych filmów:", error);
         }
     };
-
-    useEffect(() => {
-        fetchVideos(true);
-        if (appUser?.username) {
-            fetchLikedReels(appUser.username);
-        }
-    }, [appUser]);
 
     const handleLikeToggle = async (reelId, isCurrentlyLiked) => {
         if (!appUser?.username || isTogglingLike) return;

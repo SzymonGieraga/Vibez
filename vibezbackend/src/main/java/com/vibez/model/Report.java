@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "report")
+@Table(name = "reports")
 public class Report {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -35,18 +35,26 @@ public class Report {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")
     private LocalDateTime createdAt;
 
-    public void setId(Long id) {this.id = id;}
-    public void getId(Long id) { this.id = id;}
-    public User getReporter() {return this.reporter;}
-    public void setReporter(User reporter) {this.reporter = reporter;}
-    public ReportType getType() {return this.type;}
-    public void setType(ReportType type) {this.type = type;}
-    public Long getContent_id() {return this.content_id;}
-    public void setContent_id(Long content_id) {this.content_id = content_id;}
-    public String getReason() {return this.reason;}
-    public void setReason(String reason) {this.reason = reason;}
-    public ReportStatus getStatus() {return this.status;}
-    public void setStatus(ReportStatus status) {this.status = status;}
-    public LocalDateTime getCreatedAt() {return this.createdAt;}
-    public void setCreatedAt(LocalDateTime createdAt) {this.createdAt = createdAt;}
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        if (status == null) {
+            status = ReportStatus.PENDING;
+        }
+    }
+
+    public void setId(Long id) { this.id = id; }
+    public Long getId() { return this.id; }
+    public User getReporter() { return this.reporter; }
+    public void setReporter(User reporter) { this.reporter = reporter; }
+    public ReportType getType() { return this.type; }
+    public void setType(ReportType type) { this.type = type; }
+    public Long getContent_id() { return this.content_id; }
+    public void setContent_id(Long content_id) { this.content_id = content_id; }
+    public String getReason() { return this.reason; }
+    public void setReason(String reason) { this.reason = reason; }
+    public ReportStatus getStatus() { return this.status; }
+    public void setStatus(ReportStatus status) { this.status = status; }
+    public LocalDateTime getCreatedAt() { return this.createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

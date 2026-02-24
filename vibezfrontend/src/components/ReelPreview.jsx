@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiClient } from '../api/apiClient';
 
 const EyeIcon = () => (
@@ -15,6 +16,7 @@ const FireIcon = () => (
 );
 
 const ReelPreview = ({ reel }) => {
+    const navigate = useNavigate();
     const [isHovering, setIsHovering] = useState(false);
     const [showPreview, setShowPreview] = useState(false);
     const [previewData, setPreviewData] = useState(null);
@@ -150,6 +152,7 @@ const ReelPreview = ({ reel }) => {
             className="aspect-w-9 aspect-h-16 bg-gray-900 group relative overflow-hidden cursor-pointer rounded-sm shadow-sm"
             onMouseEnter={() => setIsHovering(true)}
             onMouseLeave={() => setIsHovering(false)}
+            onDoubleClick={() => navigate('/', { state: { targetReel: reel } })}
         >
             <img
                 src={reel.thumbnailUrl || 'https://placehold.co/360x640/1a1a1a/ffffff?text=No+Thumbnail'}

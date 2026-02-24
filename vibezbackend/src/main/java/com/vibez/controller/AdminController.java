@@ -1,14 +1,13 @@
 package com.vibez.controller;
 
 import com.vibez.model.Reel;
-import com.vibez.model.Report;
 import com.vibez.model.Tag;
 import com.vibez.model.User;
 import com.vibez.repository.CommentRepository;
 import com.vibez.repository.ReelRepository;
-import com.vibez.repository.ReportRepository;
 import com.vibez.repository.UserRepository;
 import com.vibez.service.ImageStorageService;
+import com.vibez.service.ReportService;
 import com.vibez.service.TagService;
 import com.vibez.service.VideoStorageService;
 import org.springframework.data.domain.Page;
@@ -20,7 +19,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -28,34 +26,51 @@ import java.util.Set;
 @RequestMapping("/api/admin")
 public class AdminController {
 
-    private final ReportRepository reportRepository;
     private final UserRepository userRepository;
     private final ReelRepository reelRepository;
     private final CommentRepository commentRepository;
     private final TagService tagService;
     private final VideoStorageService videoStorageService;
     private final ImageStorageService imageStorageService;
+    private final ReportService reportService;
 
-    public AdminController(ReportRepository reportRepository,
-                           UserRepository userRepository,
+    public AdminController(UserRepository userRepository,
                            ReelRepository reelRepository,
                            CommentRepository commentRepository,
                            TagService tagService,
                            VideoStorageService videoStorageService,
-                           ImageStorageService imageStorageService) {
-        this.reportRepository = reportRepository;
+                           ImageStorageService imageStorageService,
+                           ReportService reportService) {
         this.userRepository = userRepository;
         this.reelRepository = reelRepository;
         this.commentRepository = commentRepository;
         this.tagService = tagService;
         this.videoStorageService = videoStorageService;
         this.imageStorageService = imageStorageService;
+        this.reportService = reportService;
     }
 
     @GetMapping("/reports")
     @PreAuthorize("hasAuthority('ROLE_ADMIN')")
-    public ResponseEntity<List<Report>> getReports() {
-        return ResponseEntity.ok(reportRepository.findAll());
+    public ResponseEntity<Page<Map<String, Object>>> getReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        return ResponseEntity.ok(reportService.getReports(pageable));
+    }
+
+    @PostMapping("/reports/{id}/accept")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<?> acceptReport(@PathVariable Long id) {
+        reportService.acceptReport(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/reports/{id}/reject")
+    @PreAuthorize("hasAuthority('ROLE_ADMIN')")
+    public ResponseEntity<?> rejectReport(@PathVariable Long id) {
+        reportService.rejectReport(id);
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/reels")

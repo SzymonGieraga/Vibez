@@ -52,6 +52,12 @@ public class FirebaseTokenFilter extends OncePerRequestFilter {
             return;
         }
 
+        if ("ROLE_BANNED".equals(user.getRole())) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.getWriter().write("User account is banned");
+            return;
+        }
+
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 user,
                 null,
