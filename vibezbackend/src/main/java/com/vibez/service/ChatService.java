@@ -143,7 +143,6 @@ public class ChatService {
         message.setEdited(true);
         ChatMessage updatedMessage = chatMessageRepository.save(message);
 
-        // Wysyłamy powiadomienie o edycji
         broadcastEdit(updatedMessage);
 
         return toChatMessageDto(updatedMessage);

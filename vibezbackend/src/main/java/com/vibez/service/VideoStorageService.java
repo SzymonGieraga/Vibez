@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -19,6 +20,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -72,9 +74,25 @@ public class VideoStorageService {
         return presignedRequest.url().toString();
     }
 
+    public void deleteFileFromUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.trim().isEmpty()) return;
+        try {
+            URI uri = new URI(fileUrl);
+            String path = uri.getPath();
+            if (path.startsWith("/")) {
+                path = path.substring(1);
+            }
+            DeleteObjectRequest deleteRequest = DeleteObjectRequest.builder()
+                    .bucket(bucketName)
+                    .key(path)
+                    .build();
+            s3Client.deleteObject(deleteRequest);
+        } catch (Exception e) {
+            log.error("Failed to delete file from storage: {}", fileUrl, e);
+        }
+    }
 
     public VideoUploadResult uploadAndConvertVideo(MultipartFile file) throws IOException {
-        log.info("Starting video upload and conversion for file: {}", file.getOriginalFilename());
 
         Path tempDir = Files.createTempDirectory("video-conversion-");
         String originalFileName = file.getOriginalFilename();
@@ -83,22 +101,17 @@ public class VideoStorageService {
         try {
             Path inputPath = tempDir.resolve("input" + extension);
             file.transferTo(inputPath.toFile());
-            log.info("Saved input file to: {}", inputPath);
 
             Path outputPath = tempDir.resolve("output.mp4");
 
             if (!extension.equalsIgnoreCase(".mp4")) {
-                log.info("Converting {} to MP4", extension);
                 convertToMp4(inputPath.toFile(), outputPath.toFile());
             } else {
-                log.info("File is already MP4, copying...");
                 Files.copy(inputPath, outputPath);
             }
 
             String videoFileName = System.currentTimeMillis() + "_" +
                     originalFileName.replaceAll("\\.[^.]+$", ".mp4");
-
-            log.info("Uploading video to S3/R2 as: {}", videoFileName);
 
             PutObjectRequest putRequest = PutObjectRequest.builder()
                     .bucket(bucketName)
@@ -107,9 +120,7 @@ public class VideoStorageService {
                     .build();
 
             s3Client.putObject(putRequest, RequestBody.fromFile(outputPath));
-            log.info("Video uploaded successfully: {}", videoFileName);
 
-            log.info("Generating preview frames...");
             List<String> previewFrameUrls = generatePreviewFrames(
                     outputPath.toFile(),
                     tempDir,
@@ -122,7 +133,6 @@ public class VideoStorageService {
             cleanupTempDirectory(tempDir);
         }
     }
-
 
     private List<String> generatePreviewFrames(File videoFile, Path tempDir, String videoFileName) throws IOException {
         List<String> frameUrls = new ArrayList<>();
@@ -142,16 +152,7 @@ public class VideoStorageService {
                 String frameFileName = videoFileName.replace(".mp4", "_frame_" + i + ".jpg");
                 Path framePath = tempDir.resolve("frame_" + i + ".jpg");
 
-                // Extract frame at specific timestamp
                 FFmpegBuilder builder = new FFmpegBuilder()
-                        .setInput(videoFile.getAbsolutePath())
-                        .addOutput(framePath.toString())
-                        .setFrames(1)
-                        .setVideoFilter("select='eq(n\\," + (int)(timestamp * 30) + ")'")
-                        .setStartOffset((long)(timestamp * 1000), java.util.concurrent.TimeUnit.MILLISECONDS)
-                        .done();
-
-                builder = new FFmpegBuilder()
                         .setInput(videoFile.getAbsolutePath())
                         .addExtraArgs("-ss", String.valueOf(timestamp))
                         .addOutput(framePath.toString())
@@ -171,7 +172,6 @@ public class VideoStorageService {
 
                     s3Client.putObject(putRequest, RequestBody.fromFile(framePath));
                     frameUrls.add(buildPublicUrl(frameFileName));
-                    log.info("Uploaded preview frame: {}", frameFileName);
                 }
             }
 
@@ -184,7 +184,6 @@ public class VideoStorageService {
 
     private void convertToMp4(File input, File output) throws IOException {
         try {
-            log.info("Initializing FFmpeg with path: {}", ffmpegPath);
             FFmpeg ffmpeg = new FFmpeg(ffmpegPath);
             FFprobe ffprobe = new FFprobe(ffprobePath);
 
@@ -203,12 +202,9 @@ public class VideoStorageService {
                     .done();
 
             FFmpegExecutor executor = new FFmpegExecutor(ffmpeg, ffprobe);
-            log.info("Starting FFmpeg conversion...");
             executor.createJob(builder).run();
-            log.info("FFmpeg conversion completed successfully");
 
         } catch (IOException e) {
-            log.error("Video conversion failed", e);
             throw new IOException("Video conversion failed: " + e.getMessage(), e);
         }
     }
@@ -226,7 +222,6 @@ public class VideoStorageService {
                     .sorted(Comparator.reverseOrder())
                     .map(Path::toFile)
                     .forEach(File::delete);
-            log.info("Cleaned up temp directory: {}", tempDir);
         } catch (IOException e) {
             log.error("Failed to cleanup temp directory: {}", tempDir, e);
         }

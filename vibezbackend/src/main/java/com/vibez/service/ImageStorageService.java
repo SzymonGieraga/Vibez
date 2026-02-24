@@ -10,6 +10,7 @@ import org.springframework.web.multipart.MultipartFile;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.net.URI;
 import java.net.URL;
 import java.util.concurrent.TimeUnit;
 
@@ -70,6 +71,20 @@ public class ImageStorageService {
         return url.toString();
     }
 
+    public void deleteFileFromUrl(String fileUrl) {
+        if (fileUrl == null || fileUrl.trim().isEmpty()) return;
+        try {
+            URI uri = new URI(fileUrl);
+            String path = uri.getPath();
+            String prefix = "/" + bucketName + "/";
+            String fileName = path.startsWith(prefix) ? path.substring(prefix.length()) : path.substring(path.lastIndexOf('/') + 1);
+            BlobId blobId = BlobId.of(bucketName, fileName);
+            storage.delete(blobId);
+        } catch (Exception e) {
+            System.err.println("Failed to delete file from GCP: " + fileUrl);
+        }
+    }
+
     public String uploadFile(MultipartFile file) throws IOException {
         byte[] imageBytes = convertToJpg(file);
         String originalFileName = file.getOriginalFilename();
@@ -96,11 +111,7 @@ public class ImageStorageService {
         }
 
         BufferedImage rgbImage = new BufferedImage(
-                image.getWidth(),
-                image.getHeight(),
-                BufferedImage.TYPE_INT_RGB
-        );
-
+                image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_RGB);
         rgbImage.createGraphics().drawImage(image, 0, 0,
                 java.awt.Color.WHITE, null);
 

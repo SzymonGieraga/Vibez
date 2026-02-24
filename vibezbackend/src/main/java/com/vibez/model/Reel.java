@@ -29,10 +29,12 @@ public class Reel {
     @JsonIgnoreProperties({"comments", "reels", "email", "bio", "likes"})
     private User user;
 
-
     private String author;
     private String songTitle;
     private String genre;
+
+    @Column(nullable = false)
+    private boolean isBanned = false;
 
     @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonManagedReference
@@ -51,6 +53,14 @@ public class Reel {
     @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<Like> likes = new HashSet<>();
+
+    @OneToMany(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private Set<PlaylistReel> playlistReels = new HashSet<>();
+
+    @OneToOne(mappedBy = "reel", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    @JsonIgnore
+    private ReelPreview preview;
 
     public Reel() {}
 
@@ -77,6 +87,8 @@ public class Reel {
     public String getUsername() {
         return (user != null) ? user.getUsername() : null;
     }
+    public void setBanned(boolean isBanned) { this.isBanned = isBanned; }
+    public boolean isBanned() { return isBanned; }
     public String getAuthor() { return author; }
     public void setAuthor(String author) { this.author = author; }
     public String getSongTitle() { return songTitle; }
@@ -98,6 +110,12 @@ public class Reel {
     public void setChatMessages(List<ChatMessage> chatMessages) {this.chatMessages = chatMessages;}
     public long getViewCount() { return viewCount; }
     public void setViewCount(long viewCount) { this.viewCount = viewCount; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public ReelPreview getPreview() { return preview; }
+    public void setPreview(ReelPreview preview) { this.preview = preview; }
+    public Set<PlaylistReel> getPlaylistReels() { return playlistReels; }
+    public void setPlaylistReels(Set<PlaylistReel> playlistReels) { this.playlistReels = playlistReels; }
 
     public void decrementLikeCount() {
         if (this.likeCount > 0) {

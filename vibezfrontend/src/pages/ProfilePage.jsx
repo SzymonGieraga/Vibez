@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useTranslation } from 'react-i18next'; // Import i18n
+import { useTranslation } from 'react-i18next';
 import NavigationPanel from '../components/NavigationPanel.jsx';
 import ReelPreview from '../components/ReelPreview.jsx';
 import PlaylistCard from '../components/PlaylistCard.jsx';
@@ -8,6 +8,7 @@ import EditProfileModal from '../components/modals/EditProfileModal.jsx';
 import EditPlaylistModal from '../components/modals/EditPlaylistModal.jsx';
 import FollowListModal from '../components/modals/FollowListModal.jsx';
 import { apiClient } from '../api/apiClient';
+import ReportModal from '../components/modals/ReportModal';
 
 const EditIcon = () => <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" /></svg>;
 const MenuIcon = () => ( <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg> );
@@ -45,7 +46,7 @@ export default function ProfilePage({
                                         createOrGetPrivateChat,
                                         openChat
                                     }) {
-    const { t } = useTranslation(); // Hook do tłumaczeń
+    const { t } = useTranslation();
     const {username} = useParams();
     const [profile, setProfile] = useState(null);
     const [reels, setReels] = useState([]);
@@ -60,6 +61,7 @@ export default function ProfilePage({
     const [selectedPlaylist, setSelectedPlaylist] = useState(null);
     const [isEditPlaylistModalOpen, setIsEditPlaylistModalOpen] = useState(false);
     const [playlistToEdit, setPlaylistToEdit] = useState(null);
+    const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
     const [followStats, setFollowStats] = useState({followers: 0, following: 0});
     const [isFollowing, setIsFollowing] = useState(false);
@@ -319,6 +321,12 @@ export default function ProfilePage({
                                             >
                                                 {isFollowLoading ? '...' : (isFollowing ? t('followingState') : t('follow'))}
                                             </button>
+                                            <button
+                                                onClick={() => setIsReportModalOpen(true)}
+                                                className="px-4 py-2 bg-gray-800 text-red-500 font-bold rounded hover:bg-gray-700"
+                                            >
+                                                Zgłoś
+                                            </button>
 
                                             <button
                                                 onClick={handleMessageClick}
@@ -559,6 +567,13 @@ export default function ProfilePage({
                     onFollowUpdate={handleFollowUpdateFromModal}
                 />
             )}
+            <ReportModal
+                isOpen={isReportModalOpen}
+                onClose={() => setIsReportModalOpen(false)}
+                contentId={appUser?.id}
+                type="USER"
+                user={appUser}
+            />
         </div>
     );
 }

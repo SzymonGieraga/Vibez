@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.*;
 
 @Slf4j
@@ -98,6 +99,7 @@ public class ReelController {
         newReel.setSongTitle(songTitle);
         newReel.setGenre(genre);
         newReel.setTags(tagSet);
+        newReel.setCreatedAt(LocalDateTime.now());
 
         Reel savedReel = reelRepository.save(newReel);
 

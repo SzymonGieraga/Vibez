@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { apiClient } from '../api/apiClient';
+import ReportModal from './modals/ReportModal';
 
 const SmallHeartIcon = ({ isLiked, disabled }) => (
     <svg
@@ -40,6 +41,7 @@ const CommentItem = ({
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const [showAllReplies, setShowAllReplies] = useState(false);
     const [isExpanded, setIsExpanded] = useState(false);
+    const [reportingCommentId, setReportingCommentId] = useState(null);
 
     const isLiked = likedCommentIds.has(comment.id);
     const isLikeDisabled = togglingCommentLikes.has(comment.id);
@@ -159,6 +161,14 @@ const CommentItem = ({
                         >
                             {t('reply')}
                         </button>
+                        {comment.user.username !== currentUser.displayName && (
+                            <button
+                                onClick={() => setReportingCommentId(comment.id)}
+                                className="text-xs text-gray-500 hover:text-red-500 ml-2"
+                            >
+                                Zgłoś
+                            </button>
+                        )}
                         {(isOwner || isReelOwner) && (
                             <button onClick={() => setIsMenuOpen(prev => !prev)} className="font-bold">...</button>
                         )}
@@ -203,6 +213,13 @@ const CommentItem = ({
                     )}
                 </div>
             )}
+            <ReportModal
+                isOpen={!!reportingCommentId}
+                onClose={() => setReportingCommentId(null)}
+                contentId={reportingCommentId}
+                type="COMMENT"
+                user={currentUser}
+            />
         </div>
     );
 };

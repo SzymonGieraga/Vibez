@@ -14,17 +14,13 @@ import java.net.URI;
 @Configuration
 public class R2Config {
 
-    @Value("${aws.s3.endpoint}")
-    private String endpoint;
+    @Value("${aws.s3.endpoint}") private String endpoint;
 
-    @Value("${aws.s3.access-key-id}")
-    private String accessKeyId;
+    @Value("${aws.s3.access-key-id}") private String accessKeyId;
 
-    @Value("${aws.s3.secret-access-key}")
-    private String secretAccessKey;
+    @Value("${aws.s3.secret-access-key}") private String secretAccessKey;
 
-    @Value("${aws.s3.region}")
-    private String region;
+    @Value("${aws.s3.region}") private String region;
 
     @Bean
     public S3Client s3Client() {
